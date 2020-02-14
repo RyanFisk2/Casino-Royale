@@ -4,10 +4,10 @@ Casino Royal Project Plan
 thiswould be greatly appreciated, thank you!*
 
 **Components:**
-1) Basic
+1)Basic
 A standard deck of deck of cards with QR codes taped or glued to them. These will be used for input.
 
-2) A QR code reader
+2)A QR code reader
 The QR reader will scan the QR code that has been taped to the card. It will process this sticker and store the number and suit
 of the card. This information will then be sent to the odds processing component.
 
@@ -28,10 +28,18 @@ as the players on the table. The Odds calculation program will send the cards in
 winning to the website, which will display the cards the player has and the odds that they win. When a new card is scanned,
 the website will update to include the cards on the table and the players new odds of winning based on those cards. 
 
-Timeline:
+**Timeline**:
 By checkpoint 1
+[ ] work out the ranking systems for odds calculator
+[ ] pseudocode for odds calculator algorithms
+[ ] Research JavaScript/C libraries for working with QR reader
 
 By checkpoint 2
+[ ] QR reader sends card values to odds calculator, which processes and stores them
+[ ] Basic Website interface, card input in the actual HTML/JavaScript files
+[ ] QR codes made and assigned to each card and reading accurately
+[ ] Website interface has some styling
+
 
 **Interfaces:**
 Interface 1: Physical Card to QR Reader
@@ -60,8 +68,8 @@ all players and b) to make sure no information remains vulnerable on the interfa
 game will be between the web interface and the odds calculator, and the odds calculator to the QR reader. 
 
 **Assignments**
-Ryan Fisk:
-Reese Jones:
-Niko Revliotis:
+Ryan Fisk: Website Interface
+Reese Jones: QR Reader
+Niko Revliotis: Odds Calculator
 
 
