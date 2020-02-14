@@ -4,7 +4,7 @@ Casino Royal Project Plan
 thiswould be greatly appreciated, thank you!*
 
 **Components:**
-1)Basic
+1)
 A standard deck of deck of cards with QR codes taped or glued to them. These will be used for input.
 
 2)A QR code reader
