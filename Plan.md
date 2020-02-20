@@ -1,9 +1,9 @@
-#Casino Royal Project Plan
+# Casino Royal Project Plan
 
 *note to Gabe: we're not entirely sure yet if C or JavaScript is going to work best for what we want to make. Any guidance on 
 thiswould be greatly appreciated, thank you!*
 
-##Components:
+## Components:
 1)
 A standard deck of deck of cards with QR codes taped or glued to them. These will be used for input.
 
@@ -28,7 +28,7 @@ as the players on the table. The Odds calculation program will send the cards in
 winning to the website, which will display the cards the player has and the odds that they win. When a new card is scanned,
 the website will update to include the cards on the table and the players new odds of winning based on those cards. 
 
-##Timeline:
+## Timeline:
 By checkpoint 1:
 [ ] work out the ranking systems for odds calculator
 [ ] pseudocode for odds calculator algorithms
@@ -41,7 +41,7 @@ By checkpoint 2:
 [ ] Website interface has some styling
 
 
-##Interfaces:
+## Interfaces:
 Interface 1: Physical Card to QR Reader
 In order to simplify the process of reading the card, we will have QR stickers on each card that contains the number and 
 suit of that card. This will provide a nice, easy to use interface between the physical card and the QR reader. We will use a 
@@ -57,7 +57,7 @@ Once the odds are calculated, the web interface will receive the cards in the pl
 the calculator program and display the user's cards and odds of winning to the website. Everytime a new card is scanned, the 
 website will update with the new cards in the middle and the updated odds of winning. 
 
-##Security (from "Securing the Internet of Things")
+## Security (from "Securing the Internet of Things")
 Since our app is game-based and probably won't have much sensitive information as currently designed, our biggest safety concern
 is making sure that no players receive data that they shouldn't (i.e. the cards in another player's hand). In our design,
 we decided that each player would have their own unique web interface, and therefore the only data they would share would
@@ -67,7 +67,7 @@ At the end of every game, the data of every player using the web interface will 
 all players and b) to make sure no information remains vulnerable on the interface. The only connections allowed in this 
 game will be between the web interface and the odds calculator, and the odds calculator to the QR reader. 
 
-##Assignments
+## Assignments
 Ryan Fisk: Website Interface
 Reese Jones: QR Reader
 Niko Revliotis: Odds Calculator
