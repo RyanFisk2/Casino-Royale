@@ -32,10 +32,10 @@ float avgScore5(int* pCards, int* cCards);
 int main(int argc, char* argv[]) {
 	// Open HandRanks.dat and load it into memory
 	memset(HR, 0, sizeof(HR));
-	FILE * fin = fopen("HandRanks.dat", "rb");
+	FILE * fin = fopen("TwoPlusTwoHandEvaluator/HandRanks.dat", "rb");
 	if(!fin) {
 		printf("Failed to open HandRanks.dat\n");
-		printf("Generate using Makefile in TwoPlusTwo\n");
+		printf("Generate using Makefile in TwoPlusTwoHandEvaluator\n");
 		return -1; // terminate program, we need table
 	}
 	size_t bytesread = fread(HR, sizeof(HR), 1, fin);
