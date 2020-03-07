@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string.h>
+#include <zbar.h>
+#include <cv.h>
 
 using namespace std;
 
