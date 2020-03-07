@@ -1,7 +1,9 @@
 # 20_casino_royale
 
 ## Operation Instructions
-1. Run the Makefile in the root of the repository ("make" on command-line)
+1. Edit the following line within the main function in casino-royale.cpp: `char HandRanksLoc[] = "/home/pi/20_casino_royale/TwoPlusTwoHandEvaluator/HandRanks.dat";`
+	- Simply substitute the section "/home/pi/" section with the directory the repo is stored in (starting from root)
+2. Run the Makefile in the root of the repository ("make" on command-line)
 	- HandRanks.dat isn't tracked as it is >100MB
 	- A 2011 i7 Macbook Pro takes ~30s to generate the table
 	- A Raspberry Pi 4 takes ~100s to generate teh table
