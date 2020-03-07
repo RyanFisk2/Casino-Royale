@@ -30,9 +30,13 @@ float avgScore5(int* pCards, int* cCards);
 
 
 int main(int argc, char* argv[]) {
+	// CHANGE TO THE PATH OF HandRanks.dat, will vary by system/OS
+	char HandRanksLoc[] = "/home/pi/20_casino_royale/TwoPlusTwoHandEvaluator/HandRanks.dat";
+
+
 	// Open HandRanks.dat and load it into memory
 	memset(HR, 0, sizeof(HR));
-	FILE * fin = fopen("TwoPlusTwoHandEvaluator/HandRanks.dat", "rb");
+	FILE * fin = fopen(HandRanksLoc, "rb");
 	if(!fin) {
 		printf("Failed to open HandRanks.dat\n");
 		printf("Generate using Makefile in TwoPlusTwoHandEvaluator\n");
