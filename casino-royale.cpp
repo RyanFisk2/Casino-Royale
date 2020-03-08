@@ -1,7 +1,9 @@
 #include <iostream>
 #include <string.h>
 #include <zbar.h>
-#include <cv.h>
+#include <opencv2/objdetect.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 using namespace std;
 
