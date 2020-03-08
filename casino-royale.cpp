@@ -4,8 +4,10 @@
 #include <opencv2/objdetect.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/videoio.hpp>
 
 using namespace std;
+using namespace cv;
 
 // for HandRanks.dat
 int HR[32487834];
@@ -31,6 +33,8 @@ float calcOdds6(int* pCards, int* cCards);
 float calcOdds5(int* pCards, int* cCards);
 float avgScore6(int* pCards, int* cCards);
 float avgScore5(int* pCards, int* cCards);
+int scanCard(VideoCapture vid);
+VideoCapture initCamera(int width, int height, int frameRate);
 
 
 int main(int argc, char* argv[]) {
@@ -50,7 +54,55 @@ int main(int argc, char* argv[]) {
 	fclose(fin);
 	
 	// NOW WE CAN BEGIN
+	VideoCapture camera = initCamera(1280, 720, 30); // best results with 1280x720, 1920x1080 can't push same framerate
+	int result = scanCard(camera);
+	printf("Read Card: %d\n", result);
+	result = scanCard(camera);
+	printf("Read Card: %d\n", result);
 	
+}
+
+VideoCapture initCamera(int width, int height, int frameRate)
+{
+	VideoCapture vid(0);
+	vid.set(CAP_PROP_FRAME_HEIGHT, height);
+	vid.set(CAP_PROP_FRAME_WIDTH, width);
+	vid.set(CAP_PROP_FPS, frameRate);
+
+	return vid;
+}
+
+//scan each card when put on table
+//return chars of the name and suit
+int scanCard(VideoCapture vid)
+{
+	if(!(vid.isOpened())){
+		//video failed to open, print error
+		return -1;
+	}
+
+	Mat edges, output;
+	QRCodeDetector qrReader;
+	int count = 0;
+	while(count < 30)
+	{
+		//poll frames from video feed until a QR code is read
+		Mat frame;
+		vid >> frame;
+
+		std::string data = qrReader.detectAndDecode(frame, edges, output);
+	       	if(data.length() > 0)
+	       	{
+			//cout << "Read Card: " << data << endl;
+			return stoi(data);
+	       	}
+
+		//sleep until new frame is available
+		count++;
+	}
+
+	return 0; // unknown card - ?
+
 }
 
 // Prints the player hand in the following format:
