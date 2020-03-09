@@ -89,6 +89,15 @@ int scanCard(VideoCapture vid)
 		//poll frames from video feed until a QR code is read
 		Mat frame;
 		vid >> frame;
+		
+		// NEW CODE FOR TESTING (EASIER TO UNDERSTAND)
+		// Would replace the vid >> frame line
+		// Using vid >> frame = vid.get() which doesn't process the image properly into a Mat frame / OutputArray
+		// Attempting this might make QR reading a bit faster
+		/*
+		if(vid.read(frame) == false)
+			continue;
+		*/
 
 		std::string data = qrReader.detectAndDecode(frame, edges, output);
 	       	if(data.length() > 0)
