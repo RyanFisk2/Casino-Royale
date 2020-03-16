@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
 	pinMode(0, OUTPUT); // using WiringPi pins, type gpio readall to get all pins
 	
 	// NOW WE CAN BEGIN
-	VideoCapture camera = initCamera(1280, 720, 30); // best results with 1280x720, 1920x1080 can't push same framerate
+	VideoCapture camera = initCamera(640, 480, 90); // best results with 1280x720, 1920x1080 can't push same framerate
 	int result = scanCard(camera);
 	printf("Read Card: %d\n", result);
 	
@@ -92,51 +92,61 @@ int scanCard(VideoCapture vid)
 	}
 
 	Mat edges, output;
-	QRCodeDetector qrReader;
 	int count = 0;
-	while(count < 30)
+	Mat frame;
+	Mat frameGray;
+  	String data;
+	
+	// Create zbar scanner
+	zbar::ImageScanner scanner;
+		
+	// Configure scanner
+	scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 0); // dusables reading for all codes
+	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
+	
+	
+	while(count < 100)
 	{
 		//poll frames from video feed until a QR code is read
-		Mat frame;
-		vid >> frame;
+		//vid >> frame;
+		//sleep until new frame is available
+		printf("%d\n", count);
+		count++;
 		
 		// NEW CODE FOR TESTING (EASIER TO UNDERSTAND)
 		// Would replace the vid >> frame line
 		// Using vid >> frame = vid.get() which doesn't process the image properly into a Mat frame / OutputArray
 		// Attempting this might make QR reading a bit faster
-		/*
+		
 		if(vid.read(frame) == false)
 			continue;
-		*/
+		
 
 		//std::string data = qrReader.detectAndDecode(frame, edges, output);
 		
 
-		// Create zbar scanner
-		zbar::ImageScanner scanner;
-		
-		// Configure scanner
-		scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1);
 
 		// Convert image to grayscale
-		Mat imGray;
-		cvtColor(frame, imGray,cv::COLOR_BGR2GRAY);
+		cvtColor(frame, frameGray, cv::COLOR_BGR2GRAY);
 
 		// Wrap image data in a zbar image
-		zbar::Image image(frame.cols, frame.rows, "Y800", (uchar *)imGray.data, frame.cols * frame.rows);
+		zbar::Image image(frame.cols, frame.rows, "Y800", (uchar *)frameGray.data, frame.cols * frame.rows);
 
 		// Scan the image for barcodes and QRCodes
-		int n = scanner.scan(image);
-  		String data;
-  		// Print results
-		for(zbar::Image::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
-		{
-			decodedObject obj;
+		int scanResult = scanner.scan(image);
 
-			obj.type = symbol->get_type_name();
-			obj.data = symbol->get_data();
-			data = obj.data;
-		}
+		if(scanResult == -1)
+			return -1; // error from zbar
+
+		if(scanResult == 0)
+			continue; // no symbols found, onto the next frame
+
+		data = image.symbol_begin()->get_data();
+  		// Print results
+		/*for(zbar::Image::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
+		{
+			data = symbol->get_data();
+		}*/
 
 		
 		if(data.length() > 0)
@@ -148,9 +158,6 @@ int scanCard(VideoCapture vid)
 			return stoi(data);
 	       	}
 
-		//sleep until new frame is available
-		printf("%d\n", count);
-		count++;
 	}
 
 	return 0; // unknown card - ?
