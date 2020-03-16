@@ -38,6 +38,13 @@ float avgScore5(int* pCards, int* cCards);
 int scanCard(VideoCapture vid);
 VideoCapture initCamera(int width, int height, int frameRate);
 
+typedef struct
+{
+  string type;
+  string data;
+  vector <Point> location;
+} decodedObject;
+
 
 int main(int argc, char* argv[]) {
 	// CHANGE TO THE PATH OF HandRanks.dat, will vary by system/OS
@@ -102,8 +109,37 @@ int scanCard(VideoCapture vid)
 			continue;
 		*/
 
-		std::string data = qrReader.detectAndDecode(frame, edges, output);
-	       	if(data.length() > 0)
+		//std::string data = qrReader.detectAndDecode(frame, edges, output);
+		
+
+		// Create zbar scanner
+		zbar::ImageScanner scanner;
+		
+		// Configure scanner
+		scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1);
+
+		// Convert image to grayscale
+		Mat imGray;
+		cvtColor(frame, imGray,cv::COLOR_BGR2GRAY);
+
+		// Wrap image data in a zbar image
+		zbar::Image image(frame.cols, frame.rows, "Y800", (uchar *)imGray.data, frame.cols * frame.rows);
+
+		// Scan the image for barcodes and QRCodes
+		int n = scanner.scan(image);
+  		String data;
+  		// Print results
+		for(zbar::Image::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
+		{
+			decodedObject obj;
+
+			obj.type = symbol->get_type_name();
+			obj.data = symbol->get_data();
+			data = obj.data;
+		}
+
+		
+		if(data.length() > 0)
 	       	{
 			//cout << "Read Card: " << data << endl;
 			digitalWrite(0, HIGH);
