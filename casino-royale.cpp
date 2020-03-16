@@ -5,6 +5,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/videoio.hpp>
+#include <wiringPi.h>
+
 
 using namespace std;
 using namespace cv;
@@ -53,11 +55,12 @@ int main(int argc, char* argv[]) {
 	size_t bytesread = fread(HR, sizeof(HR), 1, fin);
 	fclose(fin);
 	
+	wiringPiSetup();
+	pinMode(0, OUTPUT); // using WiringPi pins, type gpio readall to get all pins
+	
 	// NOW WE CAN BEGIN
 	VideoCapture camera = initCamera(1280, 720, 30); // best results with 1280x720, 1920x1080 can't push same framerate
 	int result = scanCard(camera);
-	printf("Read Card: %d\n", result);
-	result = scanCard(camera);
 	printf("Read Card: %d\n", result);
 	
 }
@@ -103,6 +106,9 @@ int scanCard(VideoCapture vid)
 	       	if(data.length() > 0)
 	       	{
 			//cout << "Read Card: " << data << endl;
+			digitalWrite(0, HIGH);
+			delay(100); // 100ms
+			digitalWrite(0, LOW);
 			return stoi(data);
 	       	}
 
