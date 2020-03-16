@@ -153,12 +153,20 @@ int scanCard(VideoCapture vid)
 	       	{
 			//cout << "Read Card: " << data << endl;
 			digitalWrite(0, HIGH);
-			delay(100); // 100ms
+			delay(200); // 200ms
 			digitalWrite(0, LOW);
 			return stoi(data);
 	       	}
 
 	}
+	
+	digitalWrite(0, HIGH);
+	delay(200);
+	digitalWrite(0, LOW);
+	delay(100);
+	digitalWrite(0, HIGH);
+	delay(200);
+	digitalWrite(0, LOW);
 
 	return 0; // unknown card - ?
 
