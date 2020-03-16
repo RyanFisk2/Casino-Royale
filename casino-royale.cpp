@@ -149,6 +149,7 @@ int scanCard(VideoCapture vid)
 	       	}
 
 		//sleep until new frame is available
+		printf("%d\n", count);
 		count++;
 	}
 
