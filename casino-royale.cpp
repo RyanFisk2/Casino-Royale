@@ -104,8 +104,9 @@ int scanCard(VideoCapture vid)
 	scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 0); // dusables reading for all codes
 	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
 	
-	
-	while(count < 100)
+
+	// testing vies about ~32 fps at 480p
+	while(count < 320) // ~10s
 	{
 		//poll frames from video feed until a QR code is read
 		//vid >> frame;
