@@ -29,12 +29,15 @@ void printHand(int* hand);
 int cardNametoInt(char* cardName);
 int* combinePlyCommunity (int* pCards, int* cCards);
 int lookupHand(int* pHand);
+int lookupHand(int* pCards, int* cCards);
 bool possibleCard(int card, int *pCards, int* cCards);
 float calcOdds7(int score, int* pCards, int* cCards);
 float calcOdds6(int* pCards, int* cCards);
 float calcOdds5(int* pCards, int* cCards);
 float avgScore6(int* pCards, int* cCards);
 float avgScore5(int* pCards, int* cCards);
+float calcOdds(int* pCards, int* cCards);
+float calcAvgScore(int* pCards, int* cCards);
 int* scanPlyCards(VideoCapture vid);
 int* scanCommunityCards(VideoCapture vid, int* pCards);
 VideoCapture initCamera(int width, int height, int frameRate);
@@ -80,8 +83,13 @@ int main(int argc, char* argv[]) {
 	}
 	printf("Community Cards: %d, %d, %d, %d, %d\n", cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], cCards[5]);
 	printHand(pCards, cCards);
-	free(pCards);
-	free(cCards);
+
+	printf("Score: %d / %d\n", lookupHand(pCards, cCards), lookupHand(combinePlyCommunity(pCards, cCards)));
+	printf("Avg Possible Score: %f\n", calcAvgScore(pCards, cCards));
+	printf("Odds: %f\n", calcOdds(pCards, cCards));
+
+	//free(pCards);
+	//free(cCards);
 }
 
 VideoCapture initCamera(int width, int height, int frameRate)
@@ -331,6 +339,47 @@ int* scanCommunityCards(VideoCapture vid, int* pCards)
 
 }
 
+// checks size of cCards and returns from proper odds function
+float calcOdds(int* pCards, int* cCards) {
+	int cCardsCount = 0;
+	while(cCardsCount < 5 && cCards[cCardsCount] != 0) {
+		cCardsCount++;
+	}
+
+	printf("%d cards detected\n", cCardsCount);
+
+	if(cCardsCount == 3)
+		return calcOdds5(pCards, cCards);
+	else if(cCardsCount == 4)
+		return calcOdds6(pCards, cCards);
+	else if(cCardsCount == 5)
+		return calcOdds7(lookupHand(pCards, cCards), pCards, cCards);
+	else
+		return -1;
+
+}
+
+
+
+float calcAvgScore(int* pCards, int* cCards) {
+	int cCardsCount = 0;
+	while(cCardsCount < 5 && cCards[cCardsCount] != 0) {
+		cCardsCount++;
+	}
+	
+	printf("%d cards detected\n", cCardsCount);
+	
+	if(cCardsCount == 3)
+		return avgScore5(pCards, cCards);
+	else if(cCardsCount == 4)
+		return avgScore6(pCards, cCards);
+	else if(cCardsCount == 5)
+		return lookupHand(pCards, cCards);
+	else
+		return -1;
+}
+
+
 // Prints the player hand in the following format:
 // (plyCard1 plyCard2) communityCard1 communityCard2...
 // Unknown communityCards are printed as ??
@@ -423,6 +472,32 @@ int lookupHand(int* pHand) {
 	else { // 6 or 7 card, pass 0 once or the river
 		p = HR[p + *pHand++];
 		return HR[p + *pHand++];
+	}
+}
+
+// Looks up and returns the score of a 5/6/7-card hand in HandRanks.dat
+// Returns only the current score, not projected for 5 and 6 card
+// Slightly modified version of TwoPlusTwoHandEvaluator code
+//
+// Parameters
+// 	int* pCards - Array of playerCards, must be of length 2
+// 	int* cCards - Array of communityCards, must be of length 5, unknown cards as 0
+// Returns
+//
+//	int score - Computed score found in HandRanks.dat for a given hand (current score)
+int lookupHand(int* pCards, int* cCards) {
+	
+	int p = HR[53 + pCards[0]];
+	p = HR[p + pCards[1]];
+	p = HR[p + cCards[0]];
+	p = HR[p + cCards[1]];
+	p = HR[p + cCards[2]];
+	if(cCards[3] == 0) { // pass 0 only once (5 card/flop analysis)
+		return HR[p + cCards[3]];
+	}
+	else { // 6 or 7 card, pass 0 once or the river
+		p = HR[p + cCards[3]];
+		return HR[p + cCards[4]];
 	}
 }
 
