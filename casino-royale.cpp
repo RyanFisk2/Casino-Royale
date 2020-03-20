@@ -567,9 +567,7 @@ float calcOdds7(int score, int* pCards, int* cCards) {
 // Returns
 //	float odds - % chance of winning the hand / quantile of hand strength
 float calcOdds6(int* pCards, int* cCards) {
-	int opponentHand[7] = {0, 0, cCards[0], cCards[1], cCards[2], cCards[3], 0};
-
-	int opponentPly[2] = {0, 0};
+	int opponentCards[2] = {0, 0};
 
 	int worseHands = 0;
 	int betterHands = 0;
@@ -585,21 +583,17 @@ float calcOdds6(int* pCards, int* cCards) {
 			if(!possibleCard(j, pCards, cCards))
 				continue;
 			
-			opponentPly[0] = i;
-			opponentPly[1] = j;
+			opponentCards[0] = i;
+			opponentCards[1] = j;
 
 			for(int k = 1; k <= 52; k++) {
-				if( (!possibleCard(k, opponentPly, cCards)) || (!possibleCard(k, pCards, cCards)) ) {
+				if( (!possibleCard(k, opponentCards, cCards)) || (!possibleCard(k, pCards, cCards)) ) {
 					continue;
 				}
 
-				int* opponentHand = combinePlyCommunity(opponentPly, cCards);
-				opponentHand[6] = k;
-				int opponentScore = lookupHand(opponentHand);
-				
-				int* playerHand = combinePlyCommunity(pCards, cCards);
-				playerHand[6] = k;
-				int playerScore = lookupHand(playerHand);
+				cCards[4] = k;
+				int opponentScore = lookupHand(opponentCards, cCards);
+				int playerScore = lookupHand(pCards, cCards);
 
 				if(opponentScore > playerScore) {
 					betterHands++;
@@ -607,14 +601,15 @@ float calcOdds6(int* pCards, int* cCards) {
 				else {
 					worseHands++;
 				}
+				
+				cCards[4] = 0; // reset altered card
 
-				free(opponentHand);
-				free(playerHand);
 			}
 		
 
 		}
 	}
+
 
 	return (float)( (float)worseHands / (float)(worseHands + betterHands) );
 
@@ -628,9 +623,8 @@ float calcOdds6(int* pCards, int* cCards) {
 // Returns
 //	float odds - % chance of winning the hand / quantile of hand strength
 float calcOdds5(int* pCards, int* cCards) {
-	int opponentHand[7] = {0, 0, cCards[0], cCards[1], cCards[2], 0, 0};
 
-	int opponentPly[2] = {0, 0};
+	int opponentCards[2] = {0, 0};
 
 	int worseHands = 0;
 	int betterHands = 0;
@@ -646,33 +640,26 @@ float calcOdds5(int* pCards, int* cCards) {
 			if(!possibleCard(j, pCards, cCards))	
 				continue;
 			
-			opponentPly[0] = i;
-			opponentPly[1] = j;
+			opponentCards[0] = i;
+			opponentCards[1] = j;
 
 			for(int k = 1; k <= 52; k++) {
-				if( (!possibleCard(k, opponentPly, cCards)) || (!possibleCard(k, pCards, cCards)) ) {
+				if( (!possibleCard(k, opponentCards, cCards)) || (!possibleCard(k, pCards, cCards)) ) {
 					continue;
 				}
 
-				// remember to reset cCards[5] at the end
-				cCards[5] = k; // only being set for possibleCard check below, reset at end of method to 0
-			
+
 				for(int v = k+1; v <= 52; v++) {
 					
-					if( (!possibleCard(v, opponentPly, cCards)) || (!possibleCard(v, pCards, cCards)) ) {
+					if( (!possibleCard(v, opponentCards, cCards)) || (!possibleCard(v, pCards, cCards)) ) {
 						continue;
 					}
 				
-					int* opponentHand = combinePlyCommunity(opponentPly, cCards);
-					opponentHand[5] = k;
-					opponentHand[6] = v;
+					cCards[3] = k;	
+					cCards[4] = v;
 
-					int opponentScore = lookupHand(opponentHand);
-					
-					int* playerHand = combinePlyCommunity(pCards, cCards);
-					playerHand[5] = k;
-					playerHand[6] = v;
-					int playerScore = lookupHand(playerHand);
+					int opponentScore = lookupHand(opponentCards, cCards);
+					int playerScore = lookupHand(pCards, cCards);
 			
 					if(opponentScore > playerScore) {
 						betterHands++;
@@ -680,9 +667,10 @@ float calcOdds5(int* pCards, int* cCards) {
 					else {
 						worseHands++;
 					}
+
+					cCards[3] = 0;
+					cCards[4] = 0; // reset
 	
-					free(opponentHand);
-					free(playerHand);		
 				}
 
 			
@@ -691,8 +679,6 @@ float calcOdds5(int* pCards, int* cCards) {
 
 		}
 	}
-
-	cCards[5] = 0;
 
 	return (float)( (float)worseHands / (float)(worseHands + betterHands) );
 
@@ -719,9 +705,10 @@ float avgScore6(int* pCards, int* cCards) {
 		avgScore += lookupHand(pCards, cCards);
 		count++;
 	
+		cCards[4] = 0; // reset altered value	
+	
 	}
 
-	cCards[4] = 0; // reset altered value	
 	return (float)avgScore / (float)count; // dividing by 46 since thats the remaining number of cards to check
 }
 
@@ -751,12 +738,13 @@ float avgScore5(int* pCards, int* cCards) {
 
 			avgScore += lookupHand(pCards, cCards);
 			count++;
+		
+			cCards[3] = 0;
+			cCards[4] = 0;
 		}
 	
 	}
 
-	cCards[3] = 0;
-	cCards[4] = 0;
 	return (float)avgScore / (float)count;
 }
 
