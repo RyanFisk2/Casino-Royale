@@ -524,7 +524,7 @@ bool possibleCard(int card, int* pCards, int* cCards) {
 // Returns
 //	float odds - % chance of winning the hand / quantile of hand strength
 float calcOdds7(int score, int* pCards, int* cCards) {
-	int opponentHand[7] = {0, 0, cCards[0], cCards[1], cCards[2], cCards[3], cCards[4]};
+	int opponentCards[2] = {0, 0};
 
 	int worseHands = 0;
 	int betterHands = 0;
@@ -540,10 +540,10 @@ float calcOdds7(int score, int* pCards, int* cCards) {
 			if(!possibleCard(j, pCards, cCards))	
 				continue;
 			
-			opponentHand[0] = i;
-			opponentHand[1] = j;
+			opponentCards[0] = i;
+			opponentCards[1] = j;
 		
-			int opponentScore = lookupHand(opponentHand);
+			int opponentScore = lookupHand(opponentCards, cCards);
 
 			if(opponentScore > score) {
 				betterHands++;
