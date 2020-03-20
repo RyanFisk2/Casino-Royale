@@ -706,7 +706,6 @@ float calcOdds5(int* pCards, int* cCards) {
 // Returns
 //	float avgScore - Average score possible on all possible rivers
 float avgScore6(int* pCards, int* cCards) {
-	int possibleHand[7] = { pCards[0], pCards[1], cCards[0], cCards[1], cCards[2], cCards[3], 0 };
 
 	float avgScore = 0;
 	int count = 0;
@@ -716,13 +715,13 @@ float avgScore6(int* pCards, int* cCards) {
 			continue; // card is already on the table
 		}
 
-		possibleHand[6] = i;
-		avgScore += lookupHand(possibleHand);
+		cCards[4] = i;
+		avgScore += lookupHand(pCards, cCards);
 		count++;
 	
 	}
 
-	
+	cCards[4] = 0; // reset altered value	
 	return (float)avgScore / (float)count; // dividing by 46 since thats the remaining number of cards to check
 }
 
