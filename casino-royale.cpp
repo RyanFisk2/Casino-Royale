@@ -35,7 +35,8 @@ float calcOdds6(int* pCards, int* cCards);
 float calcOdds5(int* pCards, int* cCards);
 float avgScore6(int* pCards, int* cCards);
 float avgScore5(int* pCards, int* cCards);
-int scanCard(VideoCapture vid);
+int* scanPlyCards(VideoCapture vid);
+int* scanCommunityCards(VideoCapture vid, int* pCards);
 VideoCapture initCamera(int width, int height, int frameRate);
 
 typedef struct
@@ -67,9 +68,20 @@ int main(int argc, char* argv[]) {
 	
 	// NOW WE CAN BEGIN
 	VideoCapture camera = initCamera(640, 480, 90); // best results with 1280x720, 1920x1080 can't push same framerate
-	int result = scanCard(camera);
-	printf("Read Card: %d\n", result);
+	int* pCards = nullptr;
+	while(pCards == nullptr) {
+		pCards = scanPlyCards(camera);
+	}
+	printf("Player Cards: %d, %d\n", pCards[0], pCards[1]);
 	
+	int* cCards = nullptr;
+	while(cCards == nullptr) {
+		cCards = scanCommunityCards(camera, pCards);
+	}
+	printf("Community Cards: %d, %d, %d, %d, %d\n", cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], cCards[5]);
+	printHand(pCards, cCards);
+	free(pCards);
+	free(cCards);
 }
 
 VideoCapture initCamera(int width, int height, int frameRate)
@@ -84,11 +96,12 @@ VideoCapture initCamera(int width, int height, int frameRate)
 
 //scan each card when put on table
 //return chars of the name and suit
-int scanCard(VideoCapture vid)
+// scan 2 cards (player cards)
+int* scanPlyCards(VideoCapture vid)
 {
 	if(!(vid.isOpened())){
 		//video failed to open, print error
-		return -1;
+		return nullptr;
 	}
 
 	Mat edges, output;
@@ -96,7 +109,12 @@ int scanCard(VideoCapture vid)
 	Mat frame;
 	Mat frameGray;
   	String data;
-	
+	int* pCards = (int*)malloc(sizeof(int) * 2);
+	pCards[0] = 0;
+	pCards[1] = 0;
+
+	int cardsScanned = 0;
+
 	// Create zbar scanner
 	zbar::ImageScanner scanner;
 		
@@ -106,7 +124,7 @@ int scanCard(VideoCapture vid)
 	
 
 	// testing vies about ~32 fps at 480p
-	while(count < 320) // ~10s
+	while( (count < 320) && (cardsScanned < 2) ) // ~10s
 	{
 		//poll frames from video feed until a QR code is read
 		//vid >> frame;
@@ -136,40 +154,180 @@ int scanCard(VideoCapture vid)
 		// Scan the image for barcodes and QRCodes
 		int scanResult = scanner.scan(image);
 
-		if(scanResult == -1)
-			return -1; // error from zbar
+		//if(scanResult == -1)
+		//	return NULL; // error from zbar
 
-		if(scanResult == 0)
-			continue; // no symbols found, onto the next frame
+		if(scanResult <= 0)
+			continue; // no symbols found or zbar error, onto the next frame
 
-		data = image.symbol_begin()->get_data();
+		//data = image.symbol_begin()->get_data();
   		// Print results
-		/*for(zbar::Image::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
+		for(zbar::Image::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
 		{
+			// HERE WE ARE ASSUMING THE QR CODE BEING SCANNED IS A NUMBER (NO OTHER QR CODE IS BEING SCANNED)
 			data = symbol->get_data();
-		}*/
+			int scannedCard = stoi(data);
+			bool cardExists = false;
 
+			printf("READ: %d\n", scannedCard);
+			// check if card has already been scanned
+			for(int i = 0; i < 2; i++) {
+				if(scannedCard == pCards[i])
+					cardExists = true;
+			}
+
+			if(!cardExists) {
+				printf("ADDED: %d\n", scannedCard);
+				pCards[cardsScanned] = scannedCard;
+				cardsScanned++;
+			}
+		}
 		
-		if(data.length() > 0)
-	       	{
-			//cout << "Read Card: " << data << endl;
-			digitalWrite(0, HIGH);
-			delay(200); // 200ms
-			digitalWrite(0, LOW);
-			return stoi(data);
-	       	}
-
 	}
 	
+	// scan failed, didn't get 2 cards
+	if(cardsScanned != 2) {
+		digitalWrite(0, HIGH);
+		delay(200);
+		digitalWrite(0, LOW);
+		delay(100);
+		digitalWrite(0, HIGH);
+		delay(200);
+		digitalWrite(0, LOW);
+		free(pCards);
+		return nullptr;
+	}
+		
+	// success
 	digitalWrite(0, HIGH);
-	delay(200);
-	digitalWrite(0, LOW);
 	delay(100);
-	digitalWrite(0, HIGH);
-	delay(200);
 	digitalWrite(0, LOW);
 
-	return 0; // unknown card - ?
+	return pCards;
+
+}
+
+//scan each card when put on table
+//return chars of the name and suit
+// scan 3-5 cards (community cards cards)
+// required pCards to make sure there are no duplicates
+int* scanCommunityCards(VideoCapture vid, int* pCards)
+{
+	if(!(vid.isOpened())){
+		//video failed to open, print error
+		return nullptr;
+	}
+
+	Mat edges, output;
+	int count = 0;
+	Mat frame;
+	Mat frameGray;
+  	String data;
+	int* cCards = (int*)malloc(sizeof(int) * 5);
+	
+	for(int i = 0; i < 5; i++) {
+		cCards[i] = 0;
+	}
+
+	int cardsScanned = 0;
+
+	// Create zbar scanner
+	zbar::ImageScanner scanner;
+		
+	// Configure scanner
+	scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 0); // dusables reading for all codes
+	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
+	
+
+	// testing vies about ~32 fps at 480p
+	while( (count < 320) && (cardsScanned < 5) ) // ~10s
+	{
+		//poll frames from video feed until a QR code is read
+		//vid >> frame;
+		//sleep until new frame is available
+		printf("%d\n", count);
+		count++;
+		
+		// NEW CODE FOR TESTING (EASIER TO UNDERSTAND)
+		// Would replace the vid >> frame line
+		// Using vid >> frame = vid.get() which doesn't process the image properly into a Mat frame / OutputArray
+		// Attempting this might make QR reading a bit faster
+		
+		if(vid.read(frame) == false)
+			continue;
+		
+
+		//std::string data = qrReader.detectAndDecode(frame, edges, output);
+		
+
+
+		// Convert image to grayscale
+		cvtColor(frame, frameGray, cv::COLOR_BGR2GRAY);
+
+		// Wrap image data in a zbar image
+		zbar::Image image(frame.cols, frame.rows, "Y800", (uchar *)frameGray.data, frame.cols * frame.rows);
+
+		// Scan the image for barcodes and QRCodes
+		int scanResult = scanner.scan(image);
+
+		//if(scanResult == -1)
+		//	return NULL; // error from zbar
+
+		if(scanResult <= 0)
+			continue; // no symbols found or zbar error, onto the next frame
+
+		//data = image.symbol_begin()->get_data();
+  		// Print results
+		for(zbar::Image::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
+		{
+			// HERE WE ARE ASSUMING THE QR CODE BEING SCANNED IS A NUMBER (NO OTHER QR CODE IS BEING SCANNED)
+			data = symbol->get_data();
+			int scannedCard = stoi(data);
+			bool cardExists = false;
+
+			printf("READ: %d\n", scannedCard);
+			// check if card has already been scanned in cCards
+			for(int i = 0; i < 5; i++) {
+				if(scannedCard == cCards[i])
+					cardExists = true;
+			}
+
+			// for pCards/plyCards
+			for(int i = 0; i < 2; i++) {
+				if(scannedCard == pCards[i])
+					cardExists = true;
+			}
+
+
+
+			if(!cardExists) {
+				printf("ADDED: %d\n", scannedCard);
+				cCards[cardsScanned] = scannedCard;
+				cardsScanned++;
+			}
+		}
+		
+	}
+	
+	// scan failed, didn't get 2 cards
+	if(cardsScanned < 3) {
+		digitalWrite(0, HIGH);
+		delay(200);
+		digitalWrite(0, LOW);
+		delay(100);
+		digitalWrite(0, HIGH);
+		delay(200);
+		digitalWrite(0, LOW);
+		free(cCards);
+		return nullptr;
+	}
+		
+	// success
+	digitalWrite(0, HIGH);
+	delay(100);
+	digitalWrite(0, LOW);
+
+	return cCards;
 
 }
 
