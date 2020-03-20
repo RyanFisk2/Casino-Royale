@@ -732,8 +732,8 @@ float avgScore6(int* pCards, int* cCards) {
 // Returns
 //	float avgScore - Average score possible on all possible turns and rivers
 float avgScore5(int* pCards, int* cCards) {
-	int possibleHand[7] = { pCards[0], pCards[1], cCards[0], cCards[1], cCards[2], 0, 0 };
 
+	printf("AVG SCORE 5\n");
 	float avgScore = 0;
 	int count = 0;
 	// this loop will get every possible card (of the remaining 52 - 6 = 46) and compute an average score
@@ -746,16 +746,17 @@ float avgScore5(int* pCards, int* cCards) {
 			if(!possibleCard(j, pCards, cCards))
 				continue;
 
-			possibleHand[5] = i;
-			possibleHand[6] = j;
+			cCards[3] = i;
+			cCards[4] = j;
 
-			avgScore += lookupHand(possibleHand);
+			avgScore += lookupHand(pCards, cCards);
 			count++;
 		}
 	
 	}
 
-
+	cCards[3] = 0;
+	cCards[4] = 0;
 	return (float)avgScore / (float)count;
 }
 
