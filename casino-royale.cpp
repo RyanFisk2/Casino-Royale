@@ -41,6 +41,7 @@ float calcAvgScore(int* pCards, int* cCards);
 int* scanPlyCards(VideoCapture vid);
 int* scanCommunityCards(VideoCapture vid, int* pCards);
 VideoCapture initCamera(int width, int height, int frameRate);
+void exit();
 
 typedef struct
 {
@@ -90,6 +91,7 @@ int main(int argc, char* argv[]) {
 
 	//free(pCards);
 	//free(cCards);
+	exit();
 }
 
 VideoCapture initCamera(int width, int height, int frameRate)
@@ -218,6 +220,7 @@ int* scanPlyCards(VideoCapture vid)
 //scan each card when put on table
 //return chars of the name and suit
 // scan 3-5 cards (community cards cards)
+// community cards will be sorted to allow for fast duplication checking (log(n))
 // required pCards to make sure there are no duplicates
 int* scanCommunityCards(VideoCapture vid, int* pCards)
 {
@@ -746,6 +749,16 @@ float avgScore5(int* pCards, int* cCards) {
 	}
 
 	return (float)avgScore / (float)count;
+}
+
+void exit()
+{
+	//free the camera object
+	camera.release();
+
+	//free hands
+	free(pCards);
+	free(cCards);
 }
 
 
