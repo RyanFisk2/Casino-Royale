@@ -203,7 +203,6 @@ int* scanPlyCards(VideoCapture vid)
 			int scannedCard = stoi(data);
 			bool cardExists = false;
 
-			printf("READ: %d\n", scannedCard);
 			// check if card has already been scanned
 			for(int i = 0; i < 2; i++) {
 				if(scannedCard == pCards[i])
@@ -211,7 +210,7 @@ int* scanPlyCards(VideoCapture vid)
 			}
 
 			if(!cardExists) {
-				printf("ADDED: %d\n", scannedCard);
+				printf("SCANNED: %d\n", scannedCard);
 				pCards[cardsScanned] = scannedCard;
 				cardsScanned++;
 			}
@@ -308,7 +307,6 @@ int* scanCommunityCards(VideoCapture vid, int* pCards)
 			int scannedCard = stoi(data);
 			bool cardExists = false;
 
-			printf("READ: %d\n", scannedCard);
 			// check if card has already been scanned in cCards
 			for(int i = 0; i < 5; i++) {
 				if(scannedCard == cCards[i])
@@ -324,7 +322,7 @@ int* scanCommunityCards(VideoCapture vid, int* pCards)
 
 
 			if(!cardExists) {
-				printf("ADDED: %d\n", scannedCard);
+				printf("SCANNED: %d\n", scannedCard);
 				cCards[cardsScanned] = scannedCard;
 				cardsScanned++;
 			}
