@@ -6,7 +6,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 #include <wiringPi.h>
-
+#include <time.h>
 
 using namespace std;
 using namespace cv;
@@ -139,9 +139,9 @@ VideoCapture initCamera(int width, int height, int frameRate)
 // scan 2 cards (player cards)
 int* scanPlyCards(VideoCapture vid)
 {
+	time_t startTime = time(0); // gets current system time
 
 	Mat edges, output;
-	int count = 0;
 	Mat frame;
 	Mat frameGray;
   	String data;
@@ -159,14 +159,12 @@ int* scanPlyCards(VideoCapture vid)
 	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
 	
 
-	// testing vies about ~32 fps at 480p
-	while( (count < 320) && (cardsScanned < 2) ) // ~10s
+	// runs for 10 seconds
+	while( (difftime(time(0), startTime) <= 10) && (cardsScanned < 2) ) // 10s
 	{
 		//poll frames from video feed until a QR code is read
 		//vid >> frame;
 		//sleep until new frame is available
-		printf("%d\n", count);
-		count++;
 		
 		// NEW CODE FOR TESTING (EASIER TO UNDERSTAND)
 		// Would replace the vid >> frame line
@@ -243,6 +241,7 @@ int* scanPlyCards(VideoCapture vid)
 // required pCards to make sure there are no duplicates
 int* scanCommunityCards(VideoCapture vid, int* pCards)
 {
+	time_t startTime = time(0); // gets current system time
 
 	Mat edges, output;
 	int count = 0;
@@ -265,14 +264,12 @@ int* scanCommunityCards(VideoCapture vid, int* pCards)
 	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
 	
 
-	// testing vies about ~32 fps at 480p
-	while( (count < 320) && (cardsScanned < 5) ) // ~10s
+	// runs for 10 seconds
+	while( (difftime(time(0), startTime) <= 10) && (cardsScanned < 5) ) // ~10s
 	{
 		//poll frames from video feed until a QR code is read
 		//vid >> frame;
 		//sleep until new frame is available
-		printf("%d\n", count);
-		count++;
 		
 		// NEW CODE FOR TESTING (EASIER TO UNDERSTAND)
 		// Would replace the vid >> frame line
