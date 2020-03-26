@@ -1,7 +1,15 @@
 #include <iostream>
 #include <string.h>
+#include <zbar.h>
+#include <opencv2/objdetect.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/videoio.hpp>
+#include <wiringPi.h>
+#include <time.h>
 
 using namespace std;
+using namespace cv;
 
 // for HandRanks.dat
 int HR[32487834];
@@ -21,12 +29,26 @@ void printHand(int* hand);
 int cardNametoInt(char* cardName);
 int* combinePlyCommunity (int* pCards, int* cCards);
 int lookupHand(int* pHand);
+int lookupHand(int* pCards, int* cCards);
 bool possibleCard(int card, int *pCards, int* cCards);
 float calcOdds7(int score, int* pCards, int* cCards);
 float calcOdds6(int* pCards, int* cCards);
 float calcOdds5(int* pCards, int* cCards);
 float avgScore6(int* pCards, int* cCards);
 float avgScore5(int* pCards, int* cCards);
+float calcOdds(int* pCards, int* cCards);
+float calcAvgScore(int* pCards, int* cCards);
+int* scanPlyCards(VideoCapture vid);
+int* scanCommunityCards(VideoCapture vid, int* pCards);
+VideoCapture initCamera(int width, int height, int frameRate);
+bool cameraCheck(VideoCapture vid);
+
+typedef struct
+{
+  string type;
+  string data;
+  vector <Point> location;
+} decodedObject;
 
 
 int main(int argc, char* argv[]) {
@@ -45,9 +67,319 @@ int main(int argc, char* argv[]) {
 	size_t bytesread = fread(HR, sizeof(HR), 1, fin);
 	fclose(fin);
 	
-	// NOW WE CAN BEGIN
+	wiringPiSetup();
+	pinMode(0, OUTPUT); // using WiringPi pins, type gpio readall to get all pins
 	
+	// NOW WE CAN BEGIN
+	VideoCapture camera = initCamera(640, 480, 90); // best results with 1280x720, 1920x1080 can't push same framerate
+	
+	if(!cameraCheck(camera)) {
+		printf("casino-royale: no camera detected\n");
+		return -1;
+	}
+	
+	int* pCards = nullptr;
+	while(pCards == nullptr) {
+		pCards = scanPlyCards(camera);
+	}
+	printf("Player Cards: %d, %d\n", pCards[0], pCards[1]);
+	
+	int* cCards = nullptr;
+	while(cCards == nullptr) {
+		cCards = scanCommunityCards(camera, pCards);
+	}
+	printf("Community Cards: %d, %d, %d, %d, %d\n", cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], cCards[5]);
+	printHand(pCards, cCards);
+
+	printf("Score: %d\n", lookupHand(pCards, cCards));
+	printf("Avg Possible Score: %f\n", calcAvgScore(pCards, cCards));
+	printf("Odds: %f\n", calcOdds(pCards, cCards));
+
+
+	//free the camera object
+	camera.release();
+
+	//free hands
+	free(pCards);
+	free(cCards);
 }
+
+bool cameraCheck(VideoCapture vid) {
+	if(!(vid.isOpened())){
+		//video failed to open, print error
+		digitalWrite(0, HIGH);
+		delay(500);
+		digitalWrite(0, LOW);
+		delay(100);
+		digitalWrite(0, HIGH);
+		delay(500);
+		digitalWrite(0, LOW);
+		delay(100);
+		digitalWrite(0, HIGH);
+		delay(500);
+		digitalWrite(0, LOW);
+		return false;
+	}
+
+	return true;
+}
+
+VideoCapture initCamera(int width, int height, int frameRate)
+{
+	VideoCapture vid(0);
+	vid.set(CAP_PROP_FRAME_HEIGHT, height);
+	vid.set(CAP_PROP_FRAME_WIDTH, width);
+	vid.set(CAP_PROP_FPS, frameRate);
+
+	return vid;
+}
+
+//scan each card when put on table
+//return chars of the name and suit
+// scan 2 cards (player cards)
+int* scanPlyCards(VideoCapture vid)
+{
+	time_t startTime = time(0); // gets current system time
+
+	Mat edges, output;
+	Mat frame;
+	Mat frameGray;
+  	String data;
+	int* pCards = (int*)malloc(sizeof(int) * 2);
+	pCards[0] = 0;
+	pCards[1] = 0;
+
+	int cardsScanned = 0;
+
+	// Create zbar scanner
+	zbar::ImageScanner scanner;
+		
+	// Configure scanner
+	scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 0); // dusables reading for all codes
+	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
+	
+
+	// runs for 15 seconds
+	while( (difftime(time(0), startTime) <= 15) && (cardsScanned < 2) ) // 10s
+	{
+		//poll frames from video feed until a QR code is read
+		//vid >> frame;
+		//sleep until new frame is available
+		
+		// NEW CODE FOR TESTING (EASIER TO UNDERSTAND)
+		// Would replace the vid >> frame line
+		// Using vid >> frame = vid.get() which doesn't process the image properly into a Mat frame / OutputArray
+		// Attempting this might make QR reading a bit faster
+		
+		if(vid.read(frame) == false)
+			continue;
+		
+
+		//std::string data = qrReader.detectAndDecode(frame, edges, output);
+		
+
+
+		// Convert image to grayscale
+		cvtColor(frame, frameGray, cv::COLOR_BGR2GRAY);
+
+		// Wrap image data in a zbar image
+		zbar::Image image(frame.cols, frame.rows, "Y800", (uchar *)frameGray.data, frame.cols * frame.rows);
+
+		// Scan the image for barcodes and QRCodes
+		int scanResult = scanner.scan(image);
+
+		//if(scanResult == -1)
+		//	return NULL; // error from zbar
+
+		if(scanResult <= 0)
+			continue; // no symbols found or zbar error, onto the next frame
+
+		//data = image.symbol_begin()->get_data();
+  		// Print results
+		for(zbar::Image::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
+		{
+			// HERE WE ARE ASSUMING THE QR CODE BEING SCANNED IS A NUMBER (NO OTHER QR CODE IS BEING SCANNED)
+			data = symbol->get_data();
+			int scannedCard = stoi(data);
+			bool cardExists = false;
+
+			// check if card has already been scanned
+			for(int i = 0; i < 2; i++) {
+				if(scannedCard == pCards[i])
+					cardExists = true;
+			}
+
+			if(!cardExists) {
+				printf("SCANNED: %d\n", scannedCard);
+				pCards[cardsScanned] = scannedCard;
+				cardsScanned++;
+			}
+		}
+		
+	}
+	
+	// scan failed, didn't get 2 cards
+	if(cardsScanned != 2) {
+		free(pCards);
+		return nullptr;
+	}
+		
+	
+	digitalWrite(0, HIGH);
+	delay(200);
+	digitalWrite(0, LOW);
+		
+	return pCards;
+
+}
+
+//scan each card when put on table
+//return chars of the name and suit
+// scan 3-5 cards (community cards cards)
+// community cards will be sorted to allow for fast duplication checking (log(n))
+// required pCards to make sure there are no duplicates
+int* scanCommunityCards(VideoCapture vid, int* pCards)
+{
+	time_t startTime = time(0); // gets current system time
+
+	Mat edges, output;
+	int count = 0;
+	Mat frame;
+	Mat frameGray;
+  	String data;
+	int* cCards = (int*)malloc(sizeof(int) * 5);
+	
+	for(int i = 0; i < 5; i++) {
+		cCards[i] = 0;
+	}
+
+	int cardsScanned = 0;
+
+	// Create zbar scanner
+	zbar::ImageScanner scanner;
+		
+	// Configure scanner
+	scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 0); // dusables reading for all codes
+	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
+	
+
+	// runs for 15 seconds
+	while( (difftime(time(0), startTime) <= 15) && (cardsScanned < 5) ) // ~10s
+	{
+		//poll frames from video feed until a QR code is read
+		//vid >> frame;
+		//sleep until new frame is available
+		
+		// NEW CODE FOR TESTING (EASIER TO UNDERSTAND)
+		// Would replace the vid >> frame line
+		// Using vid >> frame = vid.get() which doesn't process the image properly into a Mat frame / OutputArray
+		// Attempting this might make QR reading a bit faster
+		
+		if(vid.read(frame) == false)
+			continue;
+		
+
+		//std::string data = qrReader.detectAndDecode(frame, edges, output);
+		
+
+
+		// Convert image to grayscale
+		cvtColor(frame, frameGray, cv::COLOR_BGR2GRAY);
+
+		// Wrap image data in a zbar image
+		zbar::Image image(frame.cols, frame.rows, "Y800", (uchar *)frameGray.data, frame.cols * frame.rows);
+
+		// Scan the image for barcodes and QRCodes
+		int scanResult = scanner.scan(image);
+
+		//if(scanResult == -1)
+		//	return NULL; // error from zbar
+
+		if(scanResult <= 0)
+			continue; // no symbols found or zbar error, onto the next frame
+
+		//data = image.symbol_begin()->get_data();
+  		// Print results
+		for(zbar::Image::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
+		{
+			// HERE WE ARE ASSUMING THE QR CODE BEING SCANNED IS A NUMBER (NO OTHER QR CODE IS BEING SCANNED)
+			data = symbol->get_data();
+			int scannedCard = stoi(data);
+			bool cardExists = false;
+
+			// check if card has already been scanned in cCards
+			for(int i = 0; i < 5; i++) {
+				if(scannedCard == cCards[i])
+					cardExists = true;
+			}
+
+			// for pCards/plyCards
+			for(int i = 0; i < 2; i++) {
+				if(scannedCard == pCards[i])
+					cardExists = true;
+			}
+
+
+
+			if(!cardExists) {
+				printf("SCANNED: %d\n", scannedCard);
+				cCards[cardsScanned] = scannedCard;
+				cardsScanned++;
+			}
+		}
+		
+	}
+	
+	// scan failed, didn't get 2 cards
+	if(cardsScanned < 3) {
+		free(cCards);
+		return nullptr;
+	}
+	
+	digitalWrite(0, HIGH);
+	delay(200);
+	digitalWrite(0, LOW);
+
+	return cCards;
+
+}
+
+// checks size of cCards and returns from proper odds function
+float calcOdds(int* pCards, int* cCards) {
+	int cCardsCount = 0;
+	while(cCardsCount < 5 && cCards[cCardsCount] != 0) {
+		cCardsCount++;
+	}
+
+	if(cCardsCount == 3)
+		return calcOdds5(pCards, cCards);
+	else if(cCardsCount == 4)
+		return calcOdds6(pCards, cCards);
+	else if(cCardsCount == 5)
+		return calcOdds7(lookupHand(pCards, cCards), pCards, cCards);
+	else
+		return -1;
+
+}
+
+
+
+float calcAvgScore(int* pCards, int* cCards) {
+	int cCardsCount = 0;
+	while(cCardsCount < 5 && cCards[cCardsCount] != 0) {
+		cCardsCount++;
+	}
+		
+	if(cCardsCount == 3)
+		return avgScore5(pCards, cCards);
+	else if(cCardsCount == 4)
+		return avgScore6(pCards, cCards);
+	else if(cCardsCount == 5)
+		return lookupHand(pCards, cCards);
+	else
+		return -1;
+}
+
 
 // Prints the player hand in the following format:
 // (plyCard1 plyCard2) communityCard1 communityCard2...
@@ -144,6 +476,32 @@ int lookupHand(int* pHand) {
 	}
 }
 
+// Looks up and returns the score of a 5/6/7-card hand in HandRanks.dat
+// Returns only the current score, not projected for 5 and 6 card
+// Slightly modified version of TwoPlusTwoHandEvaluator code
+//
+// Parameters
+// 	int* pCards - Array of playerCards, must be of length 2
+// 	int* cCards - Array of communityCards, must be of length 5, unknown cards as 0
+// Returns
+//
+//	int score - Computed score found in HandRanks.dat for a given hand (current score)
+int lookupHand(int* pCards, int* cCards) {
+	
+	int p = HR[53 + pCards[0]];
+	p = HR[p + pCards[1]];
+	p = HR[p + cCards[0]];
+	p = HR[p + cCards[1]];
+	p = HR[p + cCards[2]];
+	if(cCards[3] == 0) { // pass 0 only once (5 card/flop analysis)
+		return HR[p + cCards[3]];
+	}
+	else { // 6 or 7 card, pass 0 once or the river
+		p = HR[p + cCards[3]];
+		return HR[p + cCards[4]];
+	}
+}
+
 // Simply returns false if the card exists on the table or in your hand
 //
 // Parameters
@@ -167,7 +525,7 @@ bool possibleCard(int card, int* pCards, int* cCards) {
 // Returns
 //	float odds - % chance of winning the hand / quantile of hand strength
 float calcOdds7(int score, int* pCards, int* cCards) {
-	int opponentHand[7] = {0, 0, cCards[0], cCards[1], cCards[2], cCards[3], cCards[4]};
+	int opponentCards[2] = {0, 0};
 
 	int worseHands = 0;
 	int betterHands = 0;
@@ -183,10 +541,10 @@ float calcOdds7(int score, int* pCards, int* cCards) {
 			if(!possibleCard(j, pCards, cCards))	
 				continue;
 			
-			opponentHand[0] = i;
-			opponentHand[1] = j;
+			opponentCards[0] = i;
+			opponentCards[1] = j;
 		
-			int opponentScore = lookupHand(opponentHand);
+			int opponentScore = lookupHand(opponentCards, cCards);
 
 			if(opponentScore > score) {
 				betterHands++;
@@ -210,9 +568,7 @@ float calcOdds7(int score, int* pCards, int* cCards) {
 // Returns
 //	float odds - % chance of winning the hand / quantile of hand strength
 float calcOdds6(int* pCards, int* cCards) {
-	int opponentHand[7] = {0, 0, cCards[0], cCards[1], cCards[2], cCards[3], 0};
-
-	int opponentPly[2] = {0, 0};
+	int opponentCards[2] = {0, 0};
 
 	int worseHands = 0;
 	int betterHands = 0;
@@ -228,21 +584,17 @@ float calcOdds6(int* pCards, int* cCards) {
 			if(!possibleCard(j, pCards, cCards))
 				continue;
 			
-			opponentPly[0] = i;
-			opponentPly[1] = j;
+			opponentCards[0] = i;
+			opponentCards[1] = j;
 
 			for(int k = 1; k <= 52; k++) {
-				if( (!possibleCard(k, opponentPly, cCards)) || (!possibleCard(k, pCards, cCards)) ) {
+				if( (!possibleCard(k, opponentCards, cCards)) || (!possibleCard(k, pCards, cCards)) ) {
 					continue;
 				}
 
-				int* opponentHand = combinePlyCommunity(opponentPly, cCards);
-				opponentHand[6] = k;
-				int opponentScore = lookupHand(opponentHand);
-				
-				int* playerHand = combinePlyCommunity(pCards, cCards);
-				playerHand[6] = k;
-				int playerScore = lookupHand(playerHand);
+				cCards[4] = k;
+				int opponentScore = lookupHand(opponentCards, cCards);
+				int playerScore = lookupHand(pCards, cCards);
 
 				if(opponentScore > playerScore) {
 					betterHands++;
@@ -250,14 +602,15 @@ float calcOdds6(int* pCards, int* cCards) {
 				else {
 					worseHands++;
 				}
+				
+				cCards[4] = 0; // reset altered card
 
-				free(opponentHand);
-				free(playerHand);
 			}
 		
 
 		}
 	}
+
 
 	return (float)( (float)worseHands / (float)(worseHands + betterHands) );
 
@@ -271,9 +624,8 @@ float calcOdds6(int* pCards, int* cCards) {
 // Returns
 //	float odds - % chance of winning the hand / quantile of hand strength
 float calcOdds5(int* pCards, int* cCards) {
-	int opponentHand[7] = {0, 0, cCards[0], cCards[1], cCards[2], 0, 0};
 
-	int opponentPly[2] = {0, 0};
+	int opponentCards[2] = {0, 0};
 
 	int worseHands = 0;
 	int betterHands = 0;
@@ -289,33 +641,26 @@ float calcOdds5(int* pCards, int* cCards) {
 			if(!possibleCard(j, pCards, cCards))	
 				continue;
 			
-			opponentPly[0] = i;
-			opponentPly[1] = j;
+			opponentCards[0] = i;
+			opponentCards[1] = j;
 
 			for(int k = 1; k <= 52; k++) {
-				if( (!possibleCard(k, opponentPly, cCards)) || (!possibleCard(k, pCards, cCards)) ) {
+				if( (!possibleCard(k, opponentCards, cCards)) || (!possibleCard(k, pCards, cCards)) ) {
 					continue;
 				}
 
-				// remember to reset cCards[5] at the end
-				cCards[5] = k; // only being set for possibleCard check below, reset at end of method to 0
-			
+
 				for(int v = k+1; v <= 52; v++) {
 					
-					if( (!possibleCard(v, opponentPly, cCards)) || (!possibleCard(v, pCards, cCards)) ) {
+					if( (!possibleCard(v, opponentCards, cCards)) || (!possibleCard(v, pCards, cCards)) ) {
 						continue;
 					}
 				
-					int* opponentHand = combinePlyCommunity(opponentPly, cCards);
-					opponentHand[5] = k;
-					opponentHand[6] = v;
+					cCards[3] = k;	
+					cCards[4] = v;
 
-					int opponentScore = lookupHand(opponentHand);
-					
-					int* playerHand = combinePlyCommunity(pCards, cCards);
-					playerHand[5] = k;
-					playerHand[6] = v;
-					int playerScore = lookupHand(playerHand);
+					int opponentScore = lookupHand(opponentCards, cCards);
+					int playerScore = lookupHand(pCards, cCards);
 			
 					if(opponentScore > playerScore) {
 						betterHands++;
@@ -323,9 +668,10 @@ float calcOdds5(int* pCards, int* cCards) {
 					else {
 						worseHands++;
 					}
+
+					cCards[3] = 0;
+					cCards[4] = 0; // reset
 	
-					free(opponentHand);
-					free(playerHand);		
 				}
 
 			
@@ -334,8 +680,6 @@ float calcOdds5(int* pCards, int* cCards) {
 
 		}
 	}
-
-	cCards[5] = 0;
 
 	return (float)( (float)worseHands / (float)(worseHands + betterHands) );
 
@@ -349,7 +693,6 @@ float calcOdds5(int* pCards, int* cCards) {
 // Returns
 //	float avgScore - Average score possible on all possible rivers
 float avgScore6(int* pCards, int* cCards) {
-	int possibleHand[7] = { pCards[0], pCards[1], cCards[0], cCards[1], cCards[2], cCards[3], 0 };
 
 	float avgScore = 0;
 	int count = 0;
@@ -359,13 +702,14 @@ float avgScore6(int* pCards, int* cCards) {
 			continue; // card is already on the table
 		}
 
-		possibleHand[6] = i;
-		avgScore += lookupHand(possibleHand);
+		cCards[4] = i;
+		avgScore += lookupHand(pCards, cCards);
 		count++;
+	
+		cCards[4] = 0; // reset altered value	
 	
 	}
 
-	
 	return (float)avgScore / (float)count; // dividing by 46 since thats the remaining number of cards to check
 }
 
@@ -376,7 +720,6 @@ float avgScore6(int* pCards, int* cCards) {
 // Returns
 //	float avgScore - Average score possible on all possible turns and rivers
 float avgScore5(int* pCards, int* cCards) {
-	int possibleHand[7] = { pCards[0], pCards[1], cCards[0], cCards[1], cCards[2], 0, 0 };
 
 	float avgScore = 0;
 	int count = 0;
@@ -390,15 +733,17 @@ float avgScore5(int* pCards, int* cCards) {
 			if(!possibleCard(j, pCards, cCards))
 				continue;
 
-			possibleHand[5] = i;
-			possibleHand[6] = j;
+			cCards[3] = i;
+			cCards[4] = j;
 
-			avgScore += lookupHand(possibleHand);
+			avgScore += lookupHand(pCards, cCards);
 			count++;
+		
+			cCards[3] = 0;
+			cCards[4] = 0;
 		}
 	
 	}
-
 
 	return (float)avgScore / (float)count;
 }
