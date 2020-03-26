@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
 	printf("Community Cards: %d, %d, %d, %d, %d\n", cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], cCards[5]);
 	printHand(pCards, cCards);
 
-	printf("Score: %d / %d\n", lookupHand(pCards, cCards), lookupHand(combinePlyCommunity(pCards, cCards)));
+	printf("Score: %d\n", lookupHand(pCards, cCards));
 	printf("Avg Possible Score: %f\n", calcAvgScore(pCards, cCards));
 	printf("Odds: %f\n", calcOdds(pCards, cCards));
 
@@ -159,8 +159,8 @@ int* scanPlyCards(VideoCapture vid)
 	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
 	
 
-	// runs for 10 seconds
-	while( (difftime(time(0), startTime) <= 10) && (cardsScanned < 2) ) // 10s
+	// runs for 15 seconds
+	while( (difftime(time(0), startTime) <= 15) && (cardsScanned < 2) ) // 10s
 	{
 		//poll frames from video feed until a QR code is read
 		//vid >> frame;
@@ -263,8 +263,8 @@ int* scanCommunityCards(VideoCapture vid, int* pCards)
 	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
 	
 
-	// runs for 10 seconds
-	while( (difftime(time(0), startTime) <= 10) && (cardsScanned < 5) ) // ~10s
+	// runs for 15 seconds
+	while( (difftime(time(0), startTime) <= 15) && (cardsScanned < 5) ) // ~10s
 	{
 		//poll frames from video feed until a QR code is read
 		//vid >> frame;
@@ -351,8 +351,6 @@ float calcOdds(int* pCards, int* cCards) {
 		cCardsCount++;
 	}
 
-	printf("%d cards detected\n", cCardsCount);
-
 	if(cCardsCount == 3)
 		return calcOdds5(pCards, cCards);
 	else if(cCardsCount == 4)
@@ -371,9 +369,7 @@ float calcAvgScore(int* pCards, int* cCards) {
 	while(cCardsCount < 5 && cCards[cCardsCount] != 0) {
 		cCardsCount++;
 	}
-	
-	printf("%d cards detected\n", cCardsCount);
-	
+		
 	if(cCardsCount == 3)
 		return avgScore5(pCards, cCards);
 	else if(cCardsCount == 4)
@@ -725,7 +721,6 @@ float avgScore6(int* pCards, int* cCards) {
 //	float avgScore - Average score possible on all possible turns and rivers
 float avgScore5(int* pCards, int* cCards) {
 
-	printf("AVG SCORE 5\n");
 	float avgScore = 0;
 	int count = 0;
 	// this loop will get every possible card (of the remaining 52 - 6 = 46) and compute an average score
