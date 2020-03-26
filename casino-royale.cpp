@@ -41,7 +41,7 @@ float calcAvgScore(int* pCards, int* cCards);
 int* scanPlyCards(VideoCapture vid);
 int* scanCommunityCards(VideoCapture vid, int* pCards);
 VideoCapture initCamera(int width, int height, int frameRate);
-void exit();
+bool cameraCheck(VideoCapture vid);
 
 typedef struct
 {
@@ -72,6 +72,12 @@ int main(int argc, char* argv[]) {
 	
 	// NOW WE CAN BEGIN
 	VideoCapture camera = initCamera(640, 480, 90); // best results with 1280x720, 1920x1080 can't push same framerate
+	
+	if(!cameraCheck(camera)) {
+		printf("casino-royale: no camera detected\n");
+		return -1;
+	}
+	
 	int* pCards = nullptr;
 	while(pCards == nullptr) {
 		pCards = scanPlyCards(camera);
@@ -89,9 +95,33 @@ int main(int argc, char* argv[]) {
 	printf("Avg Possible Score: %f\n", calcAvgScore(pCards, cCards));
 	printf("Odds: %f\n", calcOdds(pCards, cCards));
 
-	//free(pCards);
-	//free(cCards);
-	exit();
+
+	//free the camera object
+	camera.release();
+
+	//free hands
+	free(pCards);
+	free(cCards);
+}
+
+bool cameraCheck(VideoCapture vid) {
+	if(!(vid.isOpened())){
+		//video failed to open, print error
+		digitalWrite(0, HIGH);
+		delay(500);
+		digitalWrite(0, LOW);
+		delay(100);
+		digitalWrite(0, HIGH);
+		delay(500);
+		digitalWrite(0, LOW);
+		delay(100);
+		digitalWrite(0, HIGH);
+		delay(500);
+		digitalWrite(0, LOW);
+		return false;
+	}
+
+	return true;
 }
 
 VideoCapture initCamera(int width, int height, int frameRate)
@@ -109,10 +139,6 @@ VideoCapture initCamera(int width, int height, int frameRate)
 // scan 2 cards (player cards)
 int* scanPlyCards(VideoCapture vid)
 {
-	if(!(vid.isOpened())){
-		//video failed to open, print error
-		return nullptr;
-	}
 
 	Mat edges, output;
 	int count = 0;
@@ -208,11 +234,6 @@ int* scanPlyCards(VideoCapture vid)
 		return nullptr;
 	}
 		
-	// success
-	digitalWrite(0, HIGH);
-	delay(100);
-	digitalWrite(0, LOW);
-
 	return pCards;
 
 }
@@ -224,10 +245,6 @@ int* scanPlyCards(VideoCapture vid)
 // required pCards to make sure there are no duplicates
 int* scanCommunityCards(VideoCapture vid, int* pCards)
 {
-	if(!(vid.isOpened())){
-		//video failed to open, print error
-		return nullptr;
-	}
 
 	Mat edges, output;
 	int count = 0;
@@ -332,11 +349,6 @@ int* scanCommunityCards(VideoCapture vid, int* pCards)
 		free(cCards);
 		return nullptr;
 	}
-		
-	// success
-	digitalWrite(0, HIGH);
-	delay(100);
-	digitalWrite(0, LOW);
 
 	return cCards;
 
@@ -749,16 +761,6 @@ float avgScore5(int* pCards, int* cCards) {
 	}
 
 	return (float)avgScore / (float)count;
-}
-
-void exit()
-{
-	//free the camera object
-	camera.release();
-
-	//free hands
-	free(pCards);
-	free(cCards);
 }
 
 
