@@ -223,16 +223,14 @@ int* scanPlyCards(VideoCapture vid)
 	
 	// scan failed, didn't get 2 cards
 	if(cardsScanned != 2) {
-		digitalWrite(0, HIGH);
-		delay(200);
-		digitalWrite(0, LOW);
-		delay(100);
-		digitalWrite(0, HIGH);
-		delay(200);
-		digitalWrite(0, LOW);
 		free(pCards);
 		return nullptr;
 	}
+		
+	
+	digitalWrite(0, HIGH);
+	delay(200);
+	digitalWrite(0, LOW);
 		
 	return pCards;
 
@@ -339,16 +337,13 @@ int* scanCommunityCards(VideoCapture vid, int* pCards)
 	
 	// scan failed, didn't get 2 cards
 	if(cardsScanned < 3) {
-		digitalWrite(0, HIGH);
-		delay(200);
-		digitalWrite(0, LOW);
-		delay(100);
-		digitalWrite(0, HIGH);
-		delay(200);
-		digitalWrite(0, LOW);
 		free(cCards);
 		return nullptr;
 	}
+	
+	digitalWrite(0, HIGH);
+	delay(200);
+	digitalWrite(0, LOW);
 
 	return cCards;
 
