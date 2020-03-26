@@ -43,14 +43,6 @@ int* scanCommunityCards(VideoCapture vid, int* pCards);
 VideoCapture initCamera(int width, int height, int frameRate);
 bool cameraCheck(VideoCapture vid);
 
-typedef struct
-{
-  string type;
-  string data;
-  vector <Point> location;
-} decodedObject;
-
-
 int main(int argc, char* argv[]) {
 	// CHANGE TO THE PATH OF HandRanks.dat, will vary by system/OS
 	char HandRanksLoc[] = "/home/pi/20_casino_royale/TwoPlusTwoHandEvaluator/HandRanks.dat";

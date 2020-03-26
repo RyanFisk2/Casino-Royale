@@ -1,3 +1,0 @@
-Use the following to compile with OpenCV support
-
-g++ -o casino-royale casino-royale.cpp -I/usr/local/include/opencv4
