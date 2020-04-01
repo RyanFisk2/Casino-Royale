@@ -45,6 +45,37 @@ class Games {
         }
     }
 
+    function validateGameState($game_id) {
+        $query = "SELECT * FROM " . $this->table_name . "
+                    WHERE game_id=:game_id";
+        
+        try {
+            $stmt = $this->conn->prepare($query);
+
+            if($stmt) {
+                $game_id = $this->sanitize($game_id);
+                $stmt->bindParam(":game_id", $game_id);
+            }
+
+            $result = $stmt->execute();
+            if($result) {
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if($row['is_active'] == 1) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                $error = $stmt->errorInfo();
+                echo "Query Failed: " . $error[2] . "\n";
+                return false;
+            }
+        } catch (PDOException $e) {
+            echo "DB Problem: " . $e->getMessage();
+            return false;
+        }
+    }
+
     function generateID() {
         $length = 10;
         $cstrong = true;

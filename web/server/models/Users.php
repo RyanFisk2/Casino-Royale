@@ -51,6 +51,29 @@ class Users {
         }   
     }
 
+    function delete() {
+        $query = "DELETE FROM " . $this->table_name . "
+                    WHERE id=:user_id";
+        try {
+            $stmt = $this->conn->prepare($query);
+            
+            if($stmt) {
+                $stmt->bindParam(":user_id", $this->sanitize($this->id));
+            } 
+
+            $stmt->execute;
+            if($stmt->rowCount() > 0) {
+                return true;
+            } else {
+                $error = $stmt->errorInfo();
+                echo "Query Failed: " . $error[2] . "\n";
+                return false;
+            }
+        } catch (PDOException $e) {
+            echo "DB Problem: " . $e->getMessage();
+        }
+    }
+
     function checkUsername($username) {
         $query = "SELECT * FROM " . $this->table_name . " WHERE username=:username";
 
@@ -180,7 +203,7 @@ class Users {
     function updateSession($session_id, $status, $user_id) {
         // Remove current session token
         if($status == 0) {
-            if(verifySession($session_id)) {
+            if($this->verifySession($session_id)) {
                 $query = "UPDATE " . $this->table_name . " SET session_active=0, session_id=0 WHERE id=:user_id"; 
 
                 try {    
