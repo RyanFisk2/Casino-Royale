@@ -1,15 +1,7 @@
 #include <iostream>
 #include <string.h>
-#include <zbar.h>
-#include <opencv2/objdetect.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/videoio.hpp>
-#include <wiringPi.h>
-#include <time.h>
 
 using namespace std;
-using namespace cv;
 
 // for HandRanks.dat
 int HR[32487834];
@@ -38,14 +30,11 @@ float avgScore6(int* pCards, int* cCards);
 float avgScore5(int* pCards, int* cCards);
 float calcOdds(int* pCards, int* cCards);
 float calcAvgScore(int* pCards, int* cCards);
-int* scanPlyCards(VideoCapture vid);
-int* scanCommunityCards(VideoCapture vid, int* pCards);
-VideoCapture initCamera(int width, int height, int frameRate);
-bool cameraCheck(VideoCapture vid);
+int* generateRandomHand(int numCards);
 
 int main(int argc, char* argv[]) {
 	// CHANGE TO THE PATH OF HandRanks.dat, will vary by system/OS
-	char HandRanksLoc[] = "/home/pi/20_casino_royale/TwoPlusTwoHandEvaluator/HandRanks.dat";
+	char HandRanksLoc[] = "/home/nikorev/20_casino_royale/TwoPlusTwoHandEvaluator/HandRanks.dat";
 
 
 	// Open HandRanks.dat and load it into memory
@@ -59,281 +48,382 @@ int main(int argc, char* argv[]) {
 	size_t bytesread = fread(HR, sizeof(HR), 1, fin);
 	fclose(fin);
 	
-	wiringPiSetup();
-	pinMode(0, OUTPUT); // using WiringPi pins, type gpio readall to get all pins
 	
 	// NOW WE CAN BEGIN
-	VideoCapture camera = initCamera(640, 480, 90); // best results with 1280x720, 1920x1080 can't push same framerate
 	
-	if(!cameraCheck(camera)) {
-		printf("casino-royale: no camera detected\n");
-		return -1;
-	}
+	srand(time(NULL)); // to generate a new seed, for proper random cards
 	
-	int* pCards = nullptr;
-	while(pCards == nullptr) {
-		pCards = scanPlyCards(camera);
-	}
-	printf("Player Cards: %d, %d\n", pCards[0], pCards[1]);
 	
-	int* cCards = nullptr;
-	while(cCards == nullptr) {
-		cCards = scanCommunityCards(camera, pCards);
-	}
-	printf("Community Cards: %d, %d, %d, %d, %d\n", cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], cCards[5]);
-	printHand(pCards, cCards);
-
-	printf("Score: %d\n", lookupHand(pCards, cCards));
-	printf("Avg Possible Score: %f\n", calcAvgScore(pCards, cCards));
-	printf("Odds: %f\n", calcOdds(pCards, cCards));
-
-
-	//free the camera object
-	camera.release();
-
-	//free hands
-	free(pCards);
-	free(cCards);
-}
-
-bool cameraCheck(VideoCapture vid) {
-	if(!(vid.isOpened())){
-		//video failed to open, print error
-		digitalWrite(0, HIGH);
-		delay(500);
-		digitalWrite(0, LOW);
-		delay(100);
-		digitalWrite(0, HIGH);
-		delay(500);
-		digitalWrite(0, LOW);
-		delay(100);
-		digitalWrite(0, HIGH);
-		delay(500);
-		digitalWrite(0, LOW);
-		return false;
-	}
-
-	return true;
-}
-
-VideoCapture initCamera(int width, int height, int frameRate)
-{
-	VideoCapture vid(0);
-	vid.set(CAP_PROP_FRAME_HEIGHT, height);
-	vid.set(CAP_PROP_FRAME_WIDTH, width);
-	vid.set(CAP_PROP_FPS, frameRate);
-
-	return vid;
-}
-
-//scan each card when put on table
-//return chars of the name and suit
-// scan 2 cards (player cards)
-int* scanPlyCards(VideoCapture vid)
-{
-	time_t startTime = time(0); // gets current system time
-
-	Mat edges, output;
-	Mat frame;
-	Mat frameGray;
-  	String data;
-	int* pCards = (int*)malloc(sizeof(int) * 2);
-	pCards[0] = 0;
-	pCards[1] = 0;
-
-	int cardsScanned = 0;
-
-	// Create zbar scanner
-	zbar::ImageScanner scanner;
-		
-	// Configure scanner
-	scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 0); // dusables reading for all codes
-	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
-	
-
-	// runs for 15 seconds
-	while( (difftime(time(0), startTime) <= 15) && (cardsScanned < 2) ) // 10s
-	{
-		//poll frames from video feed until a QR code is read
-		//vid >> frame;
-		//sleep until new frame is available
-		
-		// NEW CODE FOR TESTING (EASIER TO UNDERSTAND)
-		// Would replace the vid >> frame line
-		// Using vid >> frame = vid.get() which doesn't process the image properly into a Mat frame / OutputArray
-		// Attempting this might make QR reading a bit faster
-		
-		if(vid.read(frame) == false)
-			continue;
-		
-
-		//std::string data = qrReader.detectAndDecode(frame, edges, output);
-		
-
-
-		// Convert image to grayscale
-		cvtColor(frame, frameGray, cv::COLOR_BGR2GRAY);
-
-		// Wrap image data in a zbar image
-		zbar::Image image(frame.cols, frame.rows, "Y800", (uchar *)frameGray.data, frame.cols * frame.rows);
-
-		// Scan the image for barcodes and QRCodes
-		int scanResult = scanner.scan(image);
-
-		//if(scanResult == -1)
-		//	return NULL; // error from zbar
-
-		if(scanResult <= 0)
-			continue; // no symbols found or zbar error, onto the next frame
-
-		//data = image.symbol_begin()->get_data();
-  		// Print results
-		for(zbar::Image::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
-		{
-			// HERE WE ARE ASSUMING THE QR CODE BEING SCANNED IS A NUMBER (NO OTHER QR CODE IS BEING SCANNED)
-			data = symbol->get_data();
-			int scannedCard = stoi(data);
-			bool cardExists = false;
-
-			// check if card has already been scanned
-			for(int i = 0; i < 2; i++) {
-				if(scannedCard == pCards[i])
-					cardExists = true;
-			}
-
-			if(!cardExists) {
-				printf("SCANNED: %d\n", scannedCard);
-				pCards[cardsScanned] = scannedCard;
-				cardsScanned++;
-			}
+	// -qt flag for quick test (manual odds input)
+	if( (argc > 1) && (strcmp(argv[1], "-qt") == 0) ) {
+		if(argc < 7) {
+			printf("Missing arguments\n");
+			return -1;
 		}
-		
-	}
-	
-	// scan failed, didn't get 2 cards
-	if(cardsScanned != 2) {
-		free(pCards);
-		return nullptr;
-	}
-		
-	
-	digitalWrite(0, HIGH);
-	delay(200);
-	digitalWrite(0, LOW);
-		
-	return pCards;
 
-}
+		int pCards[2] = {cardNametoInt(argv[2]), cardNametoInt(argv[3])};
 
-//scan each card when put on table
-//return chars of the name and suit
-// scan 3-5 cards (community cards cards)
-// community cards will be sorted to allow for fast duplication checking (log(n))
-// required pCards to make sure there are no duplicates
-int* scanCommunityCards(VideoCapture vid, int* pCards)
-{
-	time_t startTime = time(0); // gets current system time
-
-	Mat edges, output;
-	int count = 0;
-	Mat frame;
-	Mat frameGray;
-  	String data;
-	int* cCards = (int*)malloc(sizeof(int) * 5);
-	
-	for(int i = 0; i < 5; i++) {
-		cCards[i] = 0;
-	}
-
-	int cardsScanned = 0;
-
-	// Create zbar scanner
-	zbar::ImageScanner scanner;
-		
-	// Configure scanner
-	scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 0); // dusables reading for all codes
-	scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // enables reading only QR codes
-	
-
-	// runs for 15 seconds
-	while( (difftime(time(0), startTime) <= 15) && (cardsScanned < 5) ) // ~10s
-	{
-		//poll frames from video feed until a QR code is read
-		//vid >> frame;
-		//sleep until new frame is available
-		
-		// NEW CODE FOR TESTING (EASIER TO UNDERSTAND)
-		// Would replace the vid >> frame line
-		// Using vid >> frame = vid.get() which doesn't process the image properly into a Mat frame / OutputArray
-		// Attempting this might make QR reading a bit faster
-		
-		if(vid.read(frame) == false)
-			continue;
-		
-
-		//std::string data = qrReader.detectAndDecode(frame, edges, output);
-		
+		int* cCards = (int*)malloc(sizeof(int) * 5);
+		memset(cCards, 0, sizeof(cCards));
 
 
-		// Convert image to grayscale
-		cvtColor(frame, frameGray, cv::COLOR_BGR2GRAY);
-
-		// Wrap image data in a zbar image
-		zbar::Image image(frame.cols, frame.rows, "Y800", (uchar *)frameGray.data, frame.cols * frame.rows);
-
-		// Scan the image for barcodes and QRCodes
-		int scanResult = scanner.scan(image);
-
-		//if(scanResult == -1)
-		//	return NULL; // error from zbar
-
-		if(scanResult <= 0)
-			continue; // no symbols found or zbar error, onto the next frame
-
-		//data = image.symbol_begin()->get_data();
-  		// Print results
-		for(zbar::Image::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
-		{
-			// HERE WE ARE ASSUMING THE QR CODE BEING SCANNED IS A NUMBER (NO OTHER QR CODE IS BEING SCANNED)
-			data = symbol->get_data();
-			int scannedCard = stoi(data);
-			bool cardExists = false;
-
-			// check if card has already been scanned in cCards
-			for(int i = 0; i < 5; i++) {
-				if(scannedCard == cCards[i])
-					cardExists = true;
-			}
-
-			// for pCards/plyCards
-			for(int i = 0; i < 2; i++) {
-				if(scannedCard == pCards[i])
-					cardExists = true;
-			}
-
-
-
-			if(!cardExists) {
-				printf("SCANNED: %d\n", scannedCard);
-				cCards[cardsScanned] = scannedCard;
-				cardsScanned++;
-			}
+		for(int i = 0; i <= (argc - 5); i++) {
+			cCards[i] = cardNametoInt(argv[i + 4]);
 		}
-		
-	}
-	
-	// scan failed, didn't get 2 cards
-	if(cardsScanned < 3) {
+		for(int i = (argc - 5) + 1; i <= 5; i++) {
+			cCards[i] = 0;
+		}
+
+		int* hand = combinePlyCommunity(pCards, cCards);
+
+		int currentScore = lookupHand(pCards, cCards);
+		float avgPossibleScore = calcAvgScore(pCards, cCards);
+		float odds = calcOdds(pCards, cCards);
+
+		printHand(pCards, cCards);
+
+		printf("currentScore: %d\navgPossibleScore: %f\nOdds:%f\n", currentScore, avgPossibleScore, odds);
 		free(cCards);
-		return nullptr;
+		free(hand);
+		return 0;
+	}
+
+	// -bt gets accuracy of odds by making two opponents play against each other in a bernoulli experiment
+	// If greater than 50% odds, we should expect a win
+	// This test does the following: generates a random hand
+	// 	gets win percentage on flop, turn, and river
+	//		if > 50%, we have an expected win
+	//	reveal all cards (turn and river if not doing all 7 off the bat)
+	//	compare scores with a random opponent hand
+	//		if we win
+	//			flop/turn/river win++
+	//		else
+	//			lose++
+	// ./cardOdds -bt <numTrails> <numOpponents>
+	// will take a long time, run with >1000 trials which takes around a minute on a 2011 macbook pro
+	if( (argc > 1) && (strcmp(argv[1], "-bt") == 0) ) {
+		if(argc != 3) {
+			printf("Invalid arguments");
+			return -1;
+		}
+
+		// bulktest-results.txt
+		FILE * btout = fopen("bulktest-results.txt", "w");
+		int numTrials = atoi(argv[2]);
+		float winOdds = .5; // > 50% means we should win (2 opponents)
+		fprintf(btout, "Bulk Test with %d Trials (>50%% odds = expected win)\n\n", numTrials);
+
+		printf("Beginning Bulk Test on %d Trials (for 5/6/7 card hands)\n\n", numTrials);
+
+		int flopExpectedWin = 0;
+		int flopWin = 0;
+		int flopLose = 0;
+	
+		int turnExpectedWin = 0;
+		int turnWin = 0;
+		int turnLose = 0;
+
+		int riverExpectedWin = 0;
+		int riverWin = 0;
+		int riverLose = 0;
+
+		// 7 card
+		for(int trial = 1; trial <= numTrials; trial++) {
+			float pct = (float)trial / (float)numTrials;
+
+			if( (int)(pct * 100) % 10 == 0) {
+				printf("[");
+				float total = 1;
+				while( pct >= 0 ) {
+					printf("=");
+					pct -= .10;
+					total -= .10;
+				}
+
+				// grab the total before we modify
+				int pctBar = (1-total) * 100;
+				while(total >= 0) {
+					printf(" ");
+					total -= .10;
+				}
+				printf("] %d%%\r", pctBar);
+				fflush(stdout);
+			}
+			
+			int* hand = generateRandomHand(5);
+			int pCards[2] = {hand[0], hand[1]};
+			int cCards[5] = {hand[2], hand[3], hand[4], hand[5], hand[6]};
+
+			int score = lookupHand(pCards, cCards);
+			float odds = calcOdds(pCards, cCards);
+
+			bool expectedWin;
+			if(odds > winOdds)
+				expectedWin = true;
+			else
+				expectedWin = false;
+
+			bool cardFound = false;
+
+			while(!cardFound) {
+				int card = 1 + rand() % ((52 + 1) - 1);
+
+				if(possibleCard(card, pCards, cCards)) {
+					hand[0] = card;
+					cardFound = true;
+				}
+			}
+			
+			cardFound = false;
+
+			while(!cardFound) {
+				int card = 1 + rand() % ((52 + 1) - 1);
+
+				if(possibleCard(card, pCards, cCards)) {
+					hand[1] = card;
+					cardFound = true;
+				}
+			}
+			
+			
+			if(expectedWin)
+				riverExpectedWin++;
+		
+			int opponentScore = lookupHand(pCards, cCards);
+
+			if(opponentScore > score) {
+				riverLose++;
+			}
+			else {
+				riverWin++;
+			}
+			
+
+			free(hand);
+		}
+		
+		fprintf(btout, "7 Card Results\nExpected Win %%: %f (%d/%d)\nActual Win %%: %f (%d/%d)\n\n", ((float)riverExpectedWin / (float)(riverWin + riverLose)), riverExpectedWin, numTrials, ((float)(riverWin) / (float)(riverWin + riverLose)), riverWin, numTrials);
+		printf("\n7 Card Results\n");
+		printf("Expected Win %%: %f\n", ((float)riverExpectedWin / (float)(riverWin + riverLose)) );
+		printf("Actual Win %%: %f\n", ((float)(riverWin) / (float)(riverWin + riverLose)) );
+		
+		
+		printf("\n\n");
+		// 6 card
+		for(int trial = 1; trial <= numTrials; trial++) {
+			float pct = (float)trial / (float)numTrials;
+
+			if( (int)(pct * 100) % 10 == 0) {
+				printf("[");
+				float total = 1;
+				while( pct >= 0 ) {
+					printf("=");
+					pct -= .10;
+					total -= .10;
+				}
+
+				// grab the total before we modify
+				int pctBar = (1-total) * 100;
+				while(total >= 0) {
+					printf(" ");
+					total -= .10;
+				}
+				printf("] %d%%\r", pctBar);
+				fflush(stdout);
+			}
+
+			int* hand = generateRandomHand(5);
+			int pCards[2] = {hand[0], hand[1]};
+			int cCards[5] = {hand[2], hand[3], hand[4], hand[5], 0};
+
+			float odds = calcOdds(pCards, cCards);
+
+			bool expectedWin;
+			if(odds > winOdds)
+				expectedWin = true;
+			else
+				expectedWin = false;
+
+
+			cCards[4] = hand[6]; // add back the final card (river)
+
+			int score = lookupHand(pCards, cCards);
+
+			bool cardFound = false;
+
+			while(!cardFound) {
+				int card = 1 + rand() % ((52 + 1) - 1);
+
+				if(possibleCard(card, pCards, cCards)) {
+					hand[0] = card;
+					cardFound = true;
+				}
+			}
+			
+			cardFound = false;
+
+			while(!cardFound) {
+				int card = 1 + rand() % ((52 + 1) - 1);
+
+				if(possibleCard(card, pCards, cCards)) {
+					hand[1] = card;
+					cardFound = true;
+				}
+			}
+			
+			
+			if(expectedWin)
+				turnExpectedWin++;
+		
+			int opponentScore = lookupHand(pCards, cCards);
+
+			if(opponentScore > score) {
+				turnLose++;
+			}
+			else {
+				turnWin++;
+			}
+
+			free(hand);
+		}
+
+		fprintf(btout, "6 Card Results\nExpected Win %%: %f (%d/%d)\nActual Win %%: %f (%d/%d)\n\n", ((float)turnExpectedWin / (float)(turnWin + turnLose)), turnExpectedWin, numTrials, ((float)(turnWin) / (float)(turnWin + turnLose)), turnWin, numTrials);
+		printf("\n6 Card Results\n");
+		printf("Expected Win %%: %f\n", ((float)turnExpectedWin / (float)(turnWin + turnLose)) );
+		printf("Actual Win %%: %f\n", ((float)(turnWin) / (float)(turnWin + turnLose)) );
+		
+		
+		printf("\n\n");
+		// 5 card
+		for(int trial = 1; trial <= numTrials; trial++) {
+			float pct = (float)trial / (float)numTrials;
+
+			if( (int)(pct * 100) % 10 == 0) {
+				printf("[");
+				float total = 1;
+				while( pct >= 0 ) {
+					printf("=");
+					pct -= .10;
+					total -= .10;
+				}
+
+				// grab the total before we modify
+				int pctBar = (1-total) * 100;
+				while(total >= 0) {
+					printf(" ");
+					total -= .10;
+				}
+				printf("] %d%%\r", pctBar);
+				fflush(stdout);
+			}
+
+			int* hand = generateRandomHand(5);
+			int pCards[2] = {hand[0], hand[1]};
+			int cCards[5] = {hand[2], hand[3], hand[4], 0, 0};
+
+			float odds = calcOdds(pCards, cCards);
+			
+			bool expectedWin;
+			if(odds > winOdds)
+				expectedWin = true;
+			else
+				expectedWin = false;
+
+
+			cCards[3] = hand[5]; // add back turn and river
+			cCards[4] = hand[6];
+
+			int score = lookupHand(pCards, cCards);
+
+			bool cardFound = false;
+
+			while(!cardFound) {
+				int card = 1 + rand() % ((52 + 1) - 1);
+
+				if(possibleCard(card, pCards, cCards)) {
+					hand[0] = card;
+					cardFound = true;
+				}
+			}
+			
+			cardFound = false;
+
+			while(!cardFound) {
+				int card = 1 + rand() % ((52 + 1) - 1);
+
+				if(possibleCard(card, pCards, cCards)) {
+					hand[1] = card;
+					cardFound = true;
+				}
+			}
+			
+			
+			if(expectedWin)
+				flopExpectedWin++;
+		
+			int opponentScore = lookupHand(pCards, cCards);
+
+			if(opponentScore > score) {
+				flopLose++;
+			}
+			else {
+				flopWin++;
+			}
+
+
+			free(hand);
+		}
+
+		fprintf(btout, "5 Card Results\nExpected Win %%: %f (%d/%d)\nActual Win %%: %f (%d/%d)", ((float)flopExpectedWin / (float)(flopWin + flopLose)), flopExpectedWin, numTrials, ((float)(flopWin) / (float)(flopWin + flopLose)), flopWin, numTrials);
+		printf("\n5 Card Results\n");
+		printf("Expected Win %%: %f\n", ((float)flopExpectedWin / (float)(flopWin + flopLose)) );
+		printf("Actual Win %%: %f\n", ((float)(flopWin) / (float)(flopWin + flopLose)) );
+
+		fclose(btout);
+		printf("\n\nExpanded results saved to bulktest-results.txt\n");
+		return 0;
+
 	}
 	
-	digitalWrite(0, HIGH);
-	delay(200);
-	digitalWrite(0, LOW);
+	
+}
 
-	return cCards;
 
+// Generates unique, random cards (player + community)
+// int numCards is the number of KNOWN cards we want
+// so 3 = flop, 4 = turn, 5 = river
+int* generateRandomHand(int numCards) {
+	// USING Knuth Algorithm
+	int* hand = (int*)malloc(sizeof(int) * 7);
+	memset(hand, 0, sizeof(hand));
+		
+	int in, im;
+
+	im = 0;
+
+	for (in = 0; in < 53 && im < 7; ++in) {
+		int rn = 52 - in;
+		int rm = 7 - im;
+		if (rand() % rn < rm)    
+    			/* Take it */
+			hand[im++] = in + 1; /* +1 since your range begins from 1 */
+	}
+
+
+	// Randomize our "increasing random generation"
+	// https://stackoverflow.com/questions/20734774/random-array-generation-with-no-duplicates
+	for(int i = 0; i < 7; i++) {
+		int j = i + rand() / (RAND_MAX / (7 - i) + 1);
+		int t = hand[j];
+		hand[j] = hand[i];
+		hand[i] = t;
+	}
+
+	for(int i = (2 + numCards); i < 7; i++) {
+		hand[i] = 0; // plug in uknown cards
+	}
+	
+	return hand;
 }
 
 // checks size of cCards and returns from proper odds function
