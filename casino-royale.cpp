@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string.h>
+#include <time.h>
 
 using namespace std;
 
@@ -51,9 +52,6 @@ int main(int argc, char* argv[]) {
 	
 	// NOW WE CAN BEGIN
 	
-	srand(time(NULL)); // to generate a new seed, for proper random cards
-	
-	
 	// -qt flag for quick test (manual odds input)
 	if( (argc > 1) && (strcmp(argv[1], "-qt") == 0) ) {
 		if(argc < 7) {
@@ -102,6 +100,7 @@ int main(int argc, char* argv[]) {
 	// ./cardOdds -bt <numTrails> <numOpponents>
 	// will take a long time, run with >1000 trials which takes around a minute on a 2011 macbook pro
 	if( (argc > 1) && (strcmp(argv[1], "-bt") == 0) ) {
+
 		if(argc != 3) {
 			printf("Invalid arguments");
 			return -1;
@@ -111,7 +110,11 @@ int main(int argc, char* argv[]) {
 		FILE * btout = fopen("bulktest-results.txt", "w");
 		int numTrials = atoi(argv[2]);
 		float winOdds = .5; // > 50% means we should win (2 opponents)
-		fprintf(btout, "Bulk Test with %d Trials (>50%% odds = expected win)\n\n", numTrials);
+		
+		time_t startTime = time(0);
+		srand(startTime); // to generate a new seed, for proper random cards
+
+		fprintf(btout, "Bulk Test with %d Trials (>50%% odds = expected win)\nStarted Execution at: %s\n\n", numTrials, asctime(localtime(&startTime)));
 
 		printf("Beginning Bulk Test on %d Trials (for 5/6/7 card hands)\n\n", numTrials);
 
@@ -189,7 +192,7 @@ int main(int argc, char* argv[]) {
 			if(expectedWin)
 				riverExpectedWin++;
 		
-			int opponentScore = lookupHand(pCards, cCards);
+			int opponentScore = lookupHand(hand);
 
 			if(opponentScore > score) {
 				riverLose++;
@@ -275,7 +278,7 @@ int main(int argc, char* argv[]) {
 			if(expectedWin)
 				turnExpectedWin++;
 		
-			int opponentScore = lookupHand(pCards, cCards);
+			int opponentScore = lookupHand(hand);
 
 			if(opponentScore > score) {
 				turnLose++;
@@ -361,7 +364,7 @@ int main(int argc, char* argv[]) {
 			if(expectedWin)
 				flopExpectedWin++;
 		
-			int opponentScore = lookupHand(pCards, cCards);
+			int opponentScore = lookupHand(hand);
 
 			if(opponentScore > score) {
 				flopLose++;
@@ -374,12 +377,15 @@ int main(int argc, char* argv[]) {
 			free(hand);
 		}
 
-		fprintf(btout, "5 Card Results\nExpected Win %%: %f (%d/%d)\nActual Win %%: %f (%d/%d)", ((float)flopExpectedWin / (float)(flopWin + flopLose)), flopExpectedWin, numTrials, ((float)(flopWin) / (float)(flopWin + flopLose)), flopWin, numTrials);
+		fprintf(btout, "5 Card Results\nExpected Win %%: %f (%d/%d)\nActual Win %%: %f (%d/%d)\n\n", ((float)flopExpectedWin / (float)(flopWin + flopLose)), flopExpectedWin, numTrials, ((float)(flopWin) / (float)(flopWin + flopLose)), flopWin, numTrials);
 		printf("\n5 Card Results\n");
 		printf("Expected Win %%: %f\n", ((float)flopExpectedWin / (float)(flopWin + flopLose)) );
 		printf("Actual Win %%: %f\n", ((float)(flopWin) / (float)(flopWin + flopLose)) );
 
+		double elapsedSeconds = difftime(time(NULL), startTime);
+		fprintf(btout, "\nTraining Time: %lf seconds", elapsedSeconds);
 		fclose(btout);
+		printf("\nTraining Time: %lf seconds\n", elapsedSeconds);
 		printf("\n\nExpanded results saved to bulktest-results.txt\n");
 		return 0;
 
