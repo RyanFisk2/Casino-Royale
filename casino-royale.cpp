@@ -72,8 +72,6 @@ int main(int argc, char* argv[]) {
 			cCards[i] = 0;
 		}
 
-		int* hand = combinePlyCommunity(pCards, cCards);
-
 		int currentScore = lookupHand(pCards, cCards);
 		float avgPossibleScore = calcAvgScore(pCards, cCards);
 		float odds = calcOdds(pCards, cCards);
@@ -82,7 +80,6 @@ int main(int argc, char* argv[]) {
 
 		printf("currentScore: %d\navgPossibleScore: %f\nOdds:%f\n", currentScore, avgPossibleScore, odds);
 		free(cCards);
-		free(hand);
 		return 0;
 	}
 
