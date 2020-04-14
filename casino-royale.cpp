@@ -298,7 +298,7 @@ int main(int argc, char* argv[]) {
 
 			free(hand);
 		}
-
+		fclose(cardLogs6);
 		fprintf(btout, "6 Card Results\nExpected Win %%: %f (%d/%d)\nActual Win %%: %f (%d/%d)\n\n", ((float)turnExpectedWin / (float)(turnWin + turnLose)), turnExpectedWin, numTrials, ((float)(turnWin) / (float)(turnWin + turnLose)), turnWin, numTrials);
 		printf("\n6 Card Results\n");
 		printf("Expected Win %%: %f\n", ((float)turnExpectedWin / (float)(turnWin + turnLose)) );
@@ -390,7 +390,7 @@ int main(int argc, char* argv[]) {
 
 			free(hand);
 		}
-
+		fclose(cardLogs5);
 		fprintf(btout, "5 Card Results\nExpected Win %%: %f (%d/%d)\nActual Win %%: %f (%d/%d)\n\n", ((float)flopExpectedWin / (float)(flopWin + flopLose)), flopExpectedWin, numTrials, ((float)(flopWin) / (float)(flopWin + flopLose)), flopWin, numTrials);
 		printf("\n5 Card Results\n");
 		printf("Expected Win %%: %f\n", ((float)flopExpectedWin / (float)(flopWin + flopLose)) );
