@@ -54,7 +54,9 @@ static int flopLose = 0;
 
 int main(int argc, char* argv[]) {
 	// CHANGE TO THE PATH OF HandRanks.dat, will vary by system/OS
-	char HandRanksLoc[] = "C:\\Users\\nikor\\Downloads\\20_casino_royale-oddsAnalysis\\TwoPlusTwoHandEvaluator\\HandRanks.dat";
+	// Windows directory: "C:\\Users\\nikor\\Downloads\\20_casino_royale-oddsAnalysis\\TwoPlusTwoHandEvaluator\\HandRanks.dat"
+	//
+	char HandRanksLoc[] = "/home/nikorev/20_casino_royale/TwoPlusTwoHandEvaluator/HandRanks.dat";
 
 
 	// Open HandRanks.dat and load it into memory
