@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
 			return -1;
 		}
 		
-		printf("Up to %d concurrent threads supported (program uses 4)\n", std::thread::hardware_concurrency());
+		printf("Up to %d concurrent threads supported\n", std::thread::hardware_concurrency());
 
 		// bulktest-results.txt
 		FILE * btout = fopen("bulktest-results.txt", "w");
@@ -141,10 +141,10 @@ int main(int argc, char* argv[]) {
 		
 		// 7 CARD
 		//bulkTest7(btout, numTrials, winOdds);
-		thread bt7Thread1(numTrials/4, winOdds);
-		thread bt7Thread2(numTrials/4, winOdds);
-		thread bt7Thread3(numTrials/4, winOdds);
-		thread bt7Thread4(numTrials/4, winOdds);
+		thread bt7Thread1(bulkTest7, numTrials/4, winOdds);
+		thread bt7Thread2(bulkTest7, numTrials/4, winOdds);
+		thread bt7Thread3(bulkTest7, numTrials/4, winOdds);
+		thread bt7Thread4(bulkTest7, numTrials/4, winOdds);
 		
 		bt7Thread1.join();
 		bt7Thread2.join();
@@ -153,10 +153,10 @@ int main(int argc, char* argv[]) {
 		
 		// 6 card
 		//bulkTest6(btout, numTrials, winOdds);
-		thread bt6Thread1(numTrials/4, winOdds);
-		thread bt6Thread2(numTrials/4, winOdds);
-		thread bt6Thread3(numTrials/4, winOdds);
-		thread bt6Thread4(numTrials/4, winOdds);
+		thread bt6Thread1(bulkTest6, numTrials/4, winOdds);
+		thread bt6Thread2(bulkTest6, numTrials/4, winOdds);
+		thread bt6Thread3(bulkTest6, numTrials/4, winOdds);
+		thread bt6Thread4(bulkTest6, numTrials/4, winOdds);
 		
 		bt6Thread1.join();
 		bt6Thread2.join();
@@ -165,10 +165,10 @@ int main(int argc, char* argv[]) {
 
 		// 5 card
 		//bulkTest5(btout, numTrials, winOdds);
-		thread bt5Thread1(numTrials/4, winOdds);
-		thread bt5Thread2(numTrials/4, winOdds);
-		thread bt5Thread3(numTrials/4, winOdds);
-		thread bt5Thread4(numTrials/4, winOdds);
+		thread bt5Thread1(bulkTest5, numTrials/4, winOdds);
+		thread bt5Thread2(bulkTest5, numTrials/4, winOdds);
+		thread bt5Thread3(bulkTest5, numTrials/4, winOdds);
+		thread bt5Thread4(bulkTest5, numTrials/4, winOdds);
 		
 		bt5Thread1.join();
 		bt5Thread2.join();
@@ -835,5 +835,4 @@ float avgScore5(int* pCards, int* cCards) {
 
 	return (float)avgScore / (float)count;
 }
-
 
