@@ -5,6 +5,9 @@ make full:
 
 make quick:
 	g++ -o casino-royale casino-royale.cpp
+	
+make quick threaded:
+	g++ -std=c++11 -o casino-royale casino-royale-new.cpp
 
 make build:
 	g++ -O2 -o casino-royale casino-royale.cpp

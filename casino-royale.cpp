@@ -35,7 +35,7 @@ int* generateRandomHand(int numCards);
 
 int main(int argc, char* argv[]) {
 	// CHANGE TO THE PATH OF HandRanks.dat, will vary by system/OS
-	char HandRanksLoc[] = "/home/nikorev/20_casino_royale/TwoPlusTwoHandEvaluator/HandRanks.dat";
+	char HandRanksLoc[] = "C:\\Users\\nikor\\Downloads\\20_casino_royale-oddsAnalysis\\TwoPlusTwoHandEvaluator\\HandRanks.dat";
 
 
 	// Open HandRanks.dat and load it into memory
@@ -128,6 +128,8 @@ int main(int argc, char* argv[]) {
 		int riverLose = 0;
 
 		// 7 card
+		FILE * cardLogs7 = fopen("cardLogs7.csv", "w");
+		fprintf(cardLogs7, "pCards[0], pCards[1], cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], score, odds\n");
 		for(int trial = 1; trial <= numTrials; trial++) {
 			float pct = (float)trial / (float)numTrials;
 
@@ -156,6 +158,8 @@ int main(int argc, char* argv[]) {
 
 			int score = lookupHand(pCards, cCards);
 			float odds = calcOdds(pCards, cCards);
+			
+			fprintf(cardLogs7, "%s,%s,%s,%s,%s,%s,%s,%d,%f\n", cardNames[pCards[0]], cardNames[pCards[1]], cardNames[cCards[0]], cardNames[cCards[1]], cardNames[cCards[2]], cardNames[cCards[3]], cardNames[cCards[4]], score, odds);
 
 			bool expectedWin;
 			if(odds > winOdds)
@@ -201,7 +205,7 @@ int main(int argc, char* argv[]) {
 
 			free(hand);
 		}
-		
+		fclose(cardLogs7);
 		fprintf(btout, "7 Card Results\nExpected Win %%: %f (%d/%d)\nActual Win %%: %f (%d/%d)\n\n", ((float)riverExpectedWin / (float)(riverWin + riverLose)), riverExpectedWin, numTrials, ((float)(riverWin) / (float)(riverWin + riverLose)), riverWin, numTrials);
 		printf("\n7 Card Results\n");
 		printf("Expected Win %%: %f\n", ((float)riverExpectedWin / (float)(riverWin + riverLose)) );
@@ -210,6 +214,8 @@ int main(int argc, char* argv[]) {
 		
 		printf("\n\n");
 		// 6 card
+		FILE * cardLogs6 = fopen("cardLogs6.csv", "w");
+		fprintf(cardLogs6, "pCards[0], pCards[1], cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], score, odds\n");
 		for(int trial = 1; trial <= numTrials; trial++) {
 			float pct = (float)trial / (float)numTrials;
 
@@ -237,6 +243,9 @@ int main(int argc, char* argv[]) {
 			int cCards[5] = {hand[2], hand[3], hand[4], hand[5], 0};
 
 			float odds = calcOdds(pCards, cCards);
+
+			fprintf(cardLogs6, "%s,%s,%s,%s,%s,%s,%s,N/A,%f\n", cardNames[pCards[0]], cardNames[pCards[1]], cardNames[cCards[0]], cardNames[cCards[1]], cardNames[cCards[2]], cardNames[cCards[3]], cardNames[cCards[4]], odds);
+
 
 			bool expectedWin;
 			if(odds > winOdds)
@@ -286,7 +295,7 @@ int main(int argc, char* argv[]) {
 
 			free(hand);
 		}
-
+		fclose(cardLogs6);
 		fprintf(btout, "6 Card Results\nExpected Win %%: %f (%d/%d)\nActual Win %%: %f (%d/%d)\n\n", ((float)turnExpectedWin / (float)(turnWin + turnLose)), turnExpectedWin, numTrials, ((float)(turnWin) / (float)(turnWin + turnLose)), turnWin, numTrials);
 		printf("\n6 Card Results\n");
 		printf("Expected Win %%: %f\n", ((float)turnExpectedWin / (float)(turnWin + turnLose)) );
@@ -295,6 +304,8 @@ int main(int argc, char* argv[]) {
 		
 		printf("\n\n");
 		// 5 card
+		FILE * cardLogs5 = fopen("cardLogs5.csv", "w");
+		fprintf(cardLogs5, "pCards[0], pCards[1], cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], score, odds\n");
 		for(int trial = 1; trial <= numTrials; trial++) {
 			float pct = (float)trial / (float)numTrials;
 
@@ -322,6 +333,9 @@ int main(int argc, char* argv[]) {
 			int cCards[5] = {hand[2], hand[3], hand[4], 0, 0};
 
 			float odds = calcOdds(pCards, cCards);
+			
+			fprintf(cardLogs5, "%s,%s,%s,%s,%s,%s,%s,N/A,%f\n", cardNames[pCards[0]], cardNames[pCards[1]], cardNames[cCards[0]], cardNames[cCards[1]], cardNames[cCards[2]], cardNames[cCards[3]], cardNames[cCards[4]], odds);
+
 			
 			bool expectedWin;
 			if(odds > winOdds)
@@ -373,7 +387,7 @@ int main(int argc, char* argv[]) {
 
 			free(hand);
 		}
-
+		fclose(cardLogs5);
 		fprintf(btout, "5 Card Results\nExpected Win %%: %f (%d/%d)\nActual Win %%: %f (%d/%d)\n\n", ((float)flopExpectedWin / (float)(flopWin + flopLose)), flopExpectedWin, numTrials, ((float)(flopWin) / (float)(flopWin + flopLose)), flopWin, numTrials);
 		printf("\n5 Card Results\n");
 		printf("Expected Win %%: %f\n", ((float)flopExpectedWin / (float)(flopWin + flopLose)) );
