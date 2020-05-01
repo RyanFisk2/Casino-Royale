@@ -7,6 +7,8 @@
 #include <opencv2/videoio.hpp>
 #include <wiringPi.h>
 #include <time.h>
+#include <curl/curl.h>
+
 
 using namespace std;
 using namespace cv;
@@ -69,31 +71,66 @@ int main(int argc, char* argv[]) {
 		printf("casino-royale: no camera detected\n");
 		return -1;
 	}
+
+	CURL *curl;
+	CURLcode res;
+	if(!curl) {
+		printf("CURL failed to initialize\n");
+		return -1;
+	}
+
+	// GENERATE API KEY TO CONNECT TO REESE'S SERVER (SHOTOUT)
 	
-	int* pCards = nullptr;
-	while(pCards == nullptr) {
+	
+	// while(website says we should run)
+	// maybe a play button to enter this loop, a pause button to exit, and a stop to terminate the program?
+	while(1) {
+		int* pCards = nullptr;
+		printf("Begin hand\n");
 		pCards = scanPlyCards(camera);
-	}
-	printf("Player Cards: %d, %d\n", pCards[0], pCards[1]);
+
+		if(pCards == nullptr) // switching to this approach for easier "website communication"
+			continue;
+
+		printf("Player Cards: %d, %d\n", pCards[0], pCards[1]);
 	
-	int* cCards = nullptr;
-	while(cCards == nullptr) {
-		cCards = scanCommunityCards(camera, pCards);
+		int* cCards = nullptr;
+		int scanAttempts = 0;
+		while( (cCards == nullptr) && (scanAttempts < 2) ) {
+			cCards = scanCommunityCards(camera, pCards);
+			scanAttempts++;
+		}
+	
+		// took too long to scan cCards, assuming it's a new hand = rescan your pCards
+		if(cCards == nullptr) {
+			digitalWrite(0, HIGH);
+			delay(200);
+			digitalWrite(0, LOW);
+			delay(100);
+			digitalWrite(0, HIGH);
+			delay(200);
+			digitalWrite(0, LOW);
+			continue;
+		}
+	
+		printf("Community Cards: %d, %d, %d, %d, %d\n", cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], cCards[5]);
+		printHand(pCards, cCards);
+	
+		printf("Score: %d\n", lookupHand(pCards, cCards));
+		printf("Avg Possible Score: %f\n", calcAvgScore(pCards, cCards));
+		printf("Odds: %f\n", calcOdds(pCards, cCards));
+	
+
+		// no need to create user, just use niko password
+		
+
+		//free hand
+		free(pCards);
+		free(cCards);
 	}
-	printf("Community Cards: %d, %d, %d, %d, %d\n", cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], cCards[5]);
-	printHand(pCards, cCards);
-
-	printf("Score: %d\n", lookupHand(pCards, cCards));
-	printf("Avg Possible Score: %f\n", calcAvgScore(pCards, cCards));
-	printf("Odds: %f\n", calcOdds(pCards, cCards));
-
 
 	//free the camera object
 	camera.release();
-
-	//free hands
-	free(pCards);
-	free(cCards);
 }
 
 bool cameraCheck(VideoCapture vid) {

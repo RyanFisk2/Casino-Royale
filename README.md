@@ -6,6 +6,7 @@
 - WiringPi ([installation instructions](http://wiringpi.com/download-and-install/))
 	- Only required if utilizing a piezzo buzzer/speaker when scanning QR codes
 	- Make sure you're using the correct version for your RPi (requires 2.52 for RPi 4)
+- LibCurl Dev (sudo apt-get install libcurl4-openssl-dev)
 
 ## Operation Instructions
 1. Edit the following line within the main function in casino-royale.cpp: `char HandRanksLoc[] = "/home/pi/20_casino_royale/TwoPlusTwoHandEvaluator/HandRanks.dat";`
