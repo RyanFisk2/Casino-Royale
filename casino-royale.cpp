@@ -15,7 +15,7 @@ using namespace cv;
 
 //CONFIG
 char APIKey[65] = "57f1cc0b65e25c6d0c97e48035fd79dd05b37e7cdc1b3887b2df584cfacab4ca";
-char GameID[21] = "fd62aefb46b0bc9033c8";
+char GameID[21] = "cc79edda4ba7a79e2e48";
 
 
 // for HandRanks.dat
@@ -103,7 +103,9 @@ int main(int argc, char* argv[]) {
 
 	// while(website says we should run)
 	// maybe a play button to enter this loop, a pause button to exit, and a stop to terminate the program?
-	while(1) {
+	int numTrials = 0;
+	int maxTrials = 1;
+	while(numTrials < maxTrials) {
 		int* pCards = nullptr;
 		printf("Begin hand\n");
 		pCards = scanPlyCards(camera);
@@ -204,10 +206,69 @@ int main(int argc, char* argv[]) {
 
 		}
 
+		// send odds
+		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+		
+		char statSendURL[200];
+		strcpy(statSendURL, "https://rjones.dev/poker-api/api/v2/games/push-stat.php?api_key=");
+		strcat(statSendURL, APIKey);
+		strcat(statSendURL, "&game_id=");
+		strcat(statSendURL, GameID);
+		strcat(statSendURL, "&stat=O&value=");
+		char cardOdds[10];
+		snprintf(cardOdds, 9, "%f", calcOdds(pCards, cCards));
+		strcat(statSendURL, cardOdds);
+		curl_easy_setopt(curl, CURLOPT_URL,statSendURL);
+		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+		curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+		struct curl_slist *headers = NULL;
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		res = curl_easy_perform(curl);
+		
+		char statSendURL2[200];
+		strcpy(statSendURL2, "https://rjones.dev/poker-api/api/v2/games/push-stat.php?api_key=");
+		strcat(statSendURL2, APIKey);
+		strcat(statSendURL2, "&game_id=");
+		strcat(statSendURL2, GameID);
+		strcat(statSendURL2, "&stat=S&value=");
+		char cardScore[10];
+		snprintf(cardScore, 9, "%d", lookupHand(pCards, cCards));
+		strcat(statSendURL2, cardScore);
+		curl_easy_setopt(curl, CURLOPT_URL, statSendURL2);
+		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+		curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+		//struct curl_slist *headers = NULL;
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		res = curl_easy_perform(curl);
+		
+		char statSendURL3[200];
+		strcpy(statSendURL3, "https://rjones.dev/poker-api/api/v2/games/push-stat.php?api_key=");
+		strcat(statSendURL3, APIKey);
+		strcat(statSendURL3, "&game_id=");
+		strcat(statSendURL3, GameID);
+		strcat(statSendURL3, "&stat=A&value=");
+		char cardAvgScore[10];
+		snprintf(cardAvgScore, 9, "%f", calcAvgScore(pCards, cCards));
+		strcat(statSendURL3, cardAvgScore);
+		curl_easy_setopt(curl, CURLOPT_URL, statSendURL3);
+		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+		curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+		//struct curl_slist *headers = NULL;
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		res = curl_easy_perform(curl);
+
+		printf("\n\n%s\n\n%s\n", statSendURL2, statSendURL3);
+
 		//free hand
 		free(pCards);
 		free(cCards);
+
+		numTrials++;
 	}
+
+	printf("\n");
+
+	curl_easy_cleanup(curl);
 
 	//free the camera object
 	camera.release();
