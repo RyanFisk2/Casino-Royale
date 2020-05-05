@@ -13,6 +13,11 @@
 using namespace std;
 using namespace cv;
 
+//CONFIG
+char APIKey[65] = "57f1cc0b65e25c6d0c97e48035fd79dd05b37e7cdc1b3887b2df584cfacab4ca";
+char GameID[21] = "fd62aefb46b0bc9033c8";
+
+
 // for HandRanks.dat
 int HR[32487834];
 
@@ -44,6 +49,7 @@ int* scanPlyCards(VideoCapture vid);
 int* scanCommunityCards(VideoCapture vid, int* pCards);
 VideoCapture initCamera(int width, int height, int frameRate);
 bool cameraCheck(VideoCapture vid);
+size_t WriteToString(void* ptr, size_t size, size_t count, void *stream);
 
 int main(int argc, char* argv[]) {
 	// CHANGE TO THE PATH OF HandRanks.dat, will vary by system/OS
@@ -74,14 +80,27 @@ int main(int argc, char* argv[]) {
 
 	CURL *curl;
 	CURLcode res;
+	curl = curl_easy_init();
+	
 	if(!curl) {
 		printf("CURL failed to initialize\n");
+		digitalWrite(0, HIGH);
+		delay(200);
+		digitalWrite(0, LOW);
+		delay(100);
+		digitalWrite(0, HIGH);
+		delay(200);
+		digitalWrite(0, LOW);
+		delay(100);
+		digitalWrite(0, HIGH);
+		delay(200);
+		digitalWrite(0, LOW);
 		return -1;
 	}
+	
+	// WEBSITE HAS API KEYS, TAKING PRELOADED ONE
+	// API KEY: 57f1cc0b65e25c6d0c97e48035fd79dd05b37e7cdc1b3887b2df584cfacab4ca
 
-	// GENERATE API KEY TO CONNECT TO REESE'S SERVER (SHOTOUT)
-	
-	
 	// while(website says we should run)
 	// maybe a play button to enter this loop, a pause button to exit, and a stop to terminate the program?
 	while(1) {
@@ -113,16 +132,77 @@ int main(int argc, char* argv[]) {
 			continue;
 		}
 	
-		printf("Community Cards: %d, %d, %d, %d, %d\n", cCards[0], cCards[1], cCards[2], cCards[3], cCards[4], cCards[5]);
+		printf("Community Cards: %d, %d, %d, %d, %d\n", cCards[0], cCards[1], cCards[2], cCards[3], cCards[4]);
 		printHand(pCards, cCards);
 	
 		printf("Score: %d\n", lookupHand(pCards, cCards));
 		printf("Avg Possible Score: %f\n", calcAvgScore(pCards, cCards));
 		printf("Odds: %f\n", calcOdds(pCards, cCards));
-	
 
-		// no need to create user, just use niko password
-		
+		// Create game on website with API key
+		/* GAME ACTIVE
+		std::string readBuffer;
+
+		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+		curl_easy_setopt(curl, CURLOPT_URL, "https://rjones.dev/poker-api/api/v2/games/start.php?api_key=57f1cc0b65e25c6d0c97e48035fd79dd05b37e7cdc1b3887b2df584cfacab4ca");
+		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+		curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+		struct curl_slist *headers = NULL;
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		//curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteToString); // Credit: question 2376824 from stackoverflow
+		//curl_easy_setopt(curl, CURLOPT_WRITEDATA, &gameID); // same credit above
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteToString);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+		res = curl_easy_perform(curl);
+
+		printf("%s\n", readBuffer.c_str());
+		*/
+
+		// send cards
+		for(int i = 0; i < 2; i++) {
+			char cardSendURL[200];
+			strcpy(cardSendURL, "https://rjones.dev/poker-api/api/v2/games/push-card.php?api_key=");
+			strcat(cardSendURL, APIKey);
+			strcat(cardSendURL, "&game_id=");
+			strcat(cardSendURL, GameID);
+			strcat(cardSendURL, "&type=hand&card=");
+			char cardNum[3];
+			sprintf(cardNum, "%d", pCards[i]);
+			strcat(cardSendURL, cardNum);
+
+			printf("FULL URL:\n%s\n\n", cardSendURL);
+
+			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+			curl_easy_setopt(curl, CURLOPT_URL, cardSendURL);
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+			curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+			struct curl_slist *headers = NULL;
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+			res = curl_easy_perform(curl);
+		}
+
+		for(int v = 0; v <= 4; v++) {
+			char cardSendURL[200];
+			strcpy(cardSendURL, "https://rjones.dev/poker-api/api/v2/games/push-card.php?api_key=");
+			strcat(cardSendURL, APIKey);
+			strcat(cardSendURL, "&game_id=");
+			strcat(cardSendURL, GameID);
+			strcat(cardSendURL, "&type=comm&card=");
+			char cardNum[3];
+			sprintf(cardNum, "%d", cCards[v]);
+			strcat(cardSendURL, cardNum);
+			
+			printf("FULL URL:\n%s\n\n", cardSendURL);
+
+			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+			curl_easy_setopt(curl, CURLOPT_URL, cardSendURL);
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+			curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+			struct curl_slist *headers = NULL;
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+			res = curl_easy_perform(curl);
+
+		}
 
 		//free hand
 		free(pCards);
@@ -131,6 +211,11 @@ int main(int argc, char* argv[]) {
 
 	//free the camera object
 	camera.release();
+}
+
+size_t WriteToString(void* ptr, size_t size, size_t count, void *stream) {
+	((std::string*)stream)->append((char*)ptr, size*count);
+	return size*count;
 }
 
 bool cameraCheck(VideoCapture vid) {
